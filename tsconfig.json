@@ -38,5 +38,11 @@
 
         /* Skip type checking all .d.ts files. */
         "skipLibCheck": true
-    }
+    },
+    "exclude": [
+        "**/*.test.ts",
+        "**/*.integration.test.ts",
+        "src/test/**/*",
+        "vitest.config*.ts"
+    ]
 }

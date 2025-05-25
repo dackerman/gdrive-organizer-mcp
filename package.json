@@ -10,7 +10,9 @@
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:integration": "vitest run --config vitest.config.integration.ts",
+    "test:get-token": "node scripts/get-test-credentials.js"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.0.5",
@@ -23,6 +25,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250525.0",
+    "@types/node": "^20.11.0",
     "@vitest/ui": "^3.1.4",
     "prettier": "^3.5.3",
     "typescript": "^5.8.3",

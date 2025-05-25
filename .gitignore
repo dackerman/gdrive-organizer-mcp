@@ -170,3 +170,7 @@ dist
 
 .dev.vars
 .wrangler/
+
+# Test credentials
+test-credentials.json
+.test-credentials/
