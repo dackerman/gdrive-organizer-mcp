@@ -72,7 +72,13 @@ export async function fetchUpstreamAuthToken({
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: new URLSearchParams({ clientId, clientSecret, code, redirectUri, grantType }).toString(),
+    body: new URLSearchParams({ 
+      client_id: clientId, 
+      client_secret: clientSecret, 
+      code, 
+      redirect_uri: redirectUri, 
+      grant_type: grantType 
+    }).toString(),
   });
   if (!resp.ok) {
     console.log(await resp.text());
