@@ -8,10 +8,10 @@ Build a remote Model Context Protocol (MCP) server that enables AI assistants (l
 
 1. **Conversational AI-First**: Designed for back-and-forth conversation with Claude Desktop
 2. **Plan-Based Execution**: Operations are grouped into logical plans that can be reviewed before execution
-3. **Async Operations**: Large reorganization tasks run asynchronously to avoid timeouts
+3. **Synchronous Operations**: All operations complete before returning
 4. **Resumable**: Partial completion is acceptable; AI can reassess and continue
 5. **Auditable**: Complete history logged to Google Drive for user reference
-6. **Safe**: Single active operation at a time, clear error messages
+6. **Safe**: Clear error messages and validation
 
 ## Architecture
 
@@ -122,8 +122,8 @@ Creates a new folder.
 
 ### 3. Plan-Based Execution
 
-#### `execute_plan`
-Executes a pre-defined organization plan asynchronously.
+#### `bulk_move`
+Executes a pre-defined organization plan synchronously.
 
 **Parameters:**
 ```typescript
@@ -148,57 +148,18 @@ interface Operation {
 ```typescript
 {
   success: boolean,
-  message: string,      // "Started executing plan: Consolidate scattered notes"
-  estimatedDuration?: string // "~2 minutes, 47 operations"
-}
-```
-
-**Error Response (if operation already running):**
-```typescript
-{
-  error: "Operation already in progress",
-  currentOperation: {
-    planName: string,
-    progress: string    // "12/23 operations completed"
-  }
-}
-```
-
-#### `get_operation_status`
-Checks the status of the currently running operation.
-
-**Parameters:** None
-
-**Returns:**
-```typescript
-{
-  isRunning: boolean,
-  planName?: string,
-  planDescription?: string,
-  progress?: {
-    completed: number,
-    total: number,
-    currentOperation?: string,  // "Creating folder Documents/Notes/"
-    lastActivity: string,       // ISO timestamp
-    estimatedTimeRemaining?: string
-  }
-}
-```
-
-#### `cancel_operation`
-Cancels the currently running operation.
-
-**Parameters:** None
-
-**Returns:**
-```typescript
-{
-  success: boolean,
-  message: string,      // "Operation cancelled. 12 of 23 operations completed."
-  partialResults?: {
-    completed: number,
-    total: number
-  }
+  message: string,      // "Successfully executed plan: Consolidate scattered notes"
+  summary: {
+    totalOperations: number,
+    successfulOperations: number,
+    failedOperations: number,
+    skippedOperations: number,
+    duration: string    // "45s"
+  },
+  failures?: Array<{
+    operation: Operation,
+    error: string
+  }>
 }
 ```
 
@@ -247,7 +208,6 @@ Each line is a JSON object:
 {"timestamp": "2025-01-15T14:30:53Z", "type": "operation_completed", "operationType": "move_file", "fileName": "ideas.txt", "fromPath": "/Random/ideas.txt", "toPath": "/Documents/Notes/ideas.txt", "reason": "Groups scattered notes"}
 {"timestamp": "2025-01-15T14:30:54Z", "type": "operation_failed", "operationType": "move_file", "fileName": "missing.txt", "error": "File not found", "reason": "File may have been deleted"}
 {"timestamp": "2025-01-15T14:31:45Z", "type": "plan_completed", "planName": "Consolidate notes", "completedOperations": 21, "failedOperations": 2, "duration": "53s"}
-{"timestamp": "2025-01-15T14:32:00Z", "type": "operation_cancelled", "planName": "Clean downloads", "completedOperations": 5, "totalOperations": 15}
 ```
 
 ### Log Entry Types
@@ -256,16 +216,15 @@ Each line is a JSON object:
 - `operation_failed`: Individual operation failed
 - `operation_skipped`: Operation skipped due to conflict
 - `plan_completed`: Plan finished (success or partial)
-- `operation_cancelled`: Plan was cancelled by user
 
 ## Usage Workflow
 
 1. **Exploration Phase**: Claude uses `list_directory`, `search_files`, and `read_file` to understand the current file structure
 2. **Plan Generation**: Claude analyzes the structure and proposes an organization plan
 3. **User Review**: Plan is presented to user with clear summary of changes
-4. **Execution**: User approves, Claude calls `execute_plan`
-5. **Monitoring**: Claude can check `get_operation_status` periodically and continue conversation
-6. **Continuation**: If operation completes partially, Claude can reassess and create a new plan for remaining work
+4. **Execution**: User approves, Claude calls `bulk_move` which executes all operations synchronously
+5. **Results Review**: Claude receives complete results including any failures
+6. **Continuation**: If operations failed or more work is needed, Claude can create a new plan
 
 ## Technical Requirements
 

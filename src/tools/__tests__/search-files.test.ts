@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createSearchFilesTool } from '../search-files'
-import { DriveService, SearchFilesResult } from '../../types/drive'
+import { SearchFilesResult } from '../../types/drive'
+import { createMockDriveService } from './test-utils'
 
 describe('searchFiles tool', () => {
   it('should call DriveService with correct parameters', async () => {
@@ -38,11 +39,8 @@ describe('searchFiles tool', () => {
       ]
     }
 
-    const mockDriveService: DriveService = {
-      listDirectory: vi.fn(),
-      readFile: vi.fn(),
-      searchFiles: vi.fn().mockResolvedValue(mockResult)
-    }
+    const mockDriveService = createMockDriveService()
+    vi.mocked(mockDriveService.searchFiles).mockResolvedValue(mockResult)
 
     // Create tool with mocked service
     const tool = createSearchFilesTool(mockDriveService)
@@ -71,11 +69,8 @@ describe('searchFiles tool', () => {
   })
 
   it('should handle all search parameters', async () => {
-    const mockDriveService: DriveService = {
-      listDirectory: vi.fn(),
-      readFile: vi.fn(),
-      searchFiles: vi.fn().mockResolvedValue({ files: [] })
-    }
+    const mockDriveService = createMockDriveService()
+    vi.mocked(mockDriveService.searchFiles).mockResolvedValue({ files: [] })
 
     const tool = createSearchFilesTool(mockDriveService)
 
@@ -97,11 +92,8 @@ describe('searchFiles tool', () => {
   })
 
   it('should handle empty results', async () => {
-    const mockDriveService: DriveService = {
-      listDirectory: vi.fn(),
-      readFile: vi.fn(),
-      searchFiles: vi.fn().mockResolvedValue({ files: [] })
-    }
+    const mockDriveService = createMockDriveService()
+    vi.mocked(mockDriveService.searchFiles).mockResolvedValue({ files: [] })
 
     const tool = createSearchFilesTool(mockDriveService)
 
@@ -114,11 +106,8 @@ describe('searchFiles tool', () => {
   })
 
   it('should handle errors', async () => {
-    const mockDriveService: DriveService = {
-      listDirectory: vi.fn(),
-      readFile: vi.fn(),
-      searchFiles: vi.fn().mockRejectedValue(new Error('Search failed'))
-    }
+    const mockDriveService = createMockDriveService()
+    vi.mocked(mockDriveService.searchFiles).mockRejectedValue(new Error('Search failed'))
 
     const tool = createSearchFilesTool(mockDriveService)
 
@@ -128,11 +117,7 @@ describe('searchFiles tool', () => {
   })
 
   it('should have correct metadata', () => {
-    const mockDriveService: DriveService = {
-      listDirectory: vi.fn(),
-      readFile: vi.fn(),
-      searchFiles: vi.fn()
-    }
+    const mockDriveService = createMockDriveService()
 
     const tool = createSearchFilesTool(mockDriveService)
 

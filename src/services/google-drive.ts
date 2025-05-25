@@ -477,4 +477,106 @@ export class GoogleDriveService implements DriveService {
 
     return { files: driveFiles }
   }
+
+  // Bulk move operations
+  async moveFile(fileId: string, newParentId: string): Promise<void> {
+    console.log('[GoogleDriveService] moveFile called:', { fileId, newParentId })
+
+    // First get current parents
+    const metadataUrl = `${GOOGLE_DRIVE_API_BASE}/files/${fileId}?fields=parents`
+    const metadataResponse = await fetch(metadataUrl, {
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Accept': 'application/json'
+      }
+    })
+
+    if (!metadataResponse.ok) {
+      const errorText = await metadataResponse.text()
+      throw new Error(`Failed to get file metadata: ${metadataResponse.status} ${errorText}`)
+    }
+
+    const metadata = await metadataResponse.json() as { parents?: string[] }
+    const currentParents = metadata.parents?.join(',') || ''
+
+    // Update file with new parent
+    const updateUrl = `${GOOGLE_DRIVE_API_BASE}/files/${fileId}`
+    const updateResponse = await fetch(updateUrl, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        addParents: newParentId,
+        removeParents: currentParents
+      })
+    })
+
+    if (!updateResponse.ok) {
+      const errorText = await updateResponse.text()
+      throw new Error(`Failed to move file: ${updateResponse.status} ${errorText}`)
+    }
+
+    console.log('[GoogleDriveService] File moved successfully')
+  }
+
+  async moveFolder(folderId: string, newParentId: string): Promise<void> {
+    // Moving a folder is the same as moving a file in Google Drive
+    return this.moveFile(folderId, newParentId)
+  }
+
+  async createFolder(name: string, parentId: string): Promise<{ id: string }> {
+    console.log('[GoogleDriveService] createFolder called:', { name, parentId })
+
+    const url = `${GOOGLE_DRIVE_API_BASE}/files`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name,
+        mimeType: FOLDER_MIME_TYPE,
+        parents: [parentId]
+      })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to create folder: ${response.status} ${errorText}`)
+    }
+
+    const result = await response.json() as { id: string }
+    console.log('[GoogleDriveService] Folder created with id:', result.id)
+    
+    return { id: result.id }
+  }
+
+  async renameFile(fileId: string, newName: string): Promise<void> {
+    console.log('[GoogleDriveService] renameFile called:', { fileId, newName })
+
+    const url = `${GOOGLE_DRIVE_API_BASE}/files/${fileId}`
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: newName })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to rename file: ${response.status} ${errorText}`)
+    }
+
+    console.log('[GoogleDriveService] File renamed successfully')
+  }
+
+  async renameFolder(folderId: string, newName: string): Promise<void> {
+    // Renaming a folder is the same as renaming a file in Google Drive
+    return this.renameFile(folderId, newName)
+  }
 }

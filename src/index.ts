@@ -6,6 +6,7 @@ import { GoogleHandler } from './google-handler'
 import { createListDirectoryTool } from './tools/list-directory'
 import { createReadFileTool } from './tools/read-file'
 import { createSearchFilesTool } from './tools/search-files'
+import { createBulkMoveTool } from './tools/bulk-move'
 import { GoogleDriveService } from './services/google-drive'
 
 // Context from the auth process, encrypted & stored in the auth token
@@ -38,7 +39,8 @@ export class GDriveOrganizerMCP extends McpAgent<Env, {}, Props> {
     const tools = [
       createListDirectoryTool(this.driveService),
       createReadFileTool(this.driveService),
-      createSearchFilesTool(this.driveService)
+      createSearchFilesTool(this.driveService),
+      createBulkMoveTool(this.driveService)
     ]
     
     tools.forEach((tool) => {

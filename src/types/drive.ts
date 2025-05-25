@@ -50,4 +50,11 @@ export interface DriveService {
     namePattern?: string
     maxResults?: number
   }): Promise<SearchFilesResult>
+
+  // Bulk move operations
+  moveFile(fileId: string, newParentId: string): Promise<void>
+  moveFolder(folderId: string, newParentId: string): Promise<void>
+  createFolder(name: string, parentId: string): Promise<{ id: string }>
+  renameFile(fileId: string, newName: string): Promise<void>
+  renameFolder(folderId: string, newName: string): Promise<void>
 }
