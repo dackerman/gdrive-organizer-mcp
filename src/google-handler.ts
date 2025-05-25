@@ -19,8 +19,8 @@ app.get('/authorize', async (c) => {
   return renderApprovalDialog(c.req.raw, {
     client: await c.env.OAUTH_PROVIDER.lookupClient(clientId),
     server: {
-      name: 'Google OAuth Demo',
-      description: 'This MCP Server is a demo for Google OAuth.',
+      name: 'Google Drive Organizer',
+      description: 'This MCP Server provides tools to organize your Google Drive files.', 
     },
     state: { oauthReqInfo },
   })
@@ -36,13 +36,14 @@ app.post('/authorize', async (c) => {
 })
 
 async function redirectToGoogle(c: Context, oauthReqInfo: AuthRequest, headers: Record<string, string> = {}) {
+  console.log('[GoogleHandler] Redirecting to Google with scopes:', 'email profile https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file')
   return new Response(null, {
     status: 302,
     headers: {
       ...headers,
       location: getUpstreamAuthorizeUrl({
         upstreamUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-        scope: 'email profile',
+        scope: 'email profile https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file',
         clientId: c.env.GOOGLE_CLIENT_ID,
         redirectUri: new URL('/callback', c.req.raw.url).href,
         state: btoa(JSON.stringify(oauthReqInfo)),
@@ -73,6 +74,7 @@ app.get('/callback', async (c) => {
     return c.text('Missing code', 400)
   }
 
+  console.log('[GoogleHandler] Exchanging code for access token')
   const [accessToken, googleErrResponse] = await fetchUpstreamAuthToken({
     upstreamUrl: 'https://accounts.google.com/o/oauth2/token',
     clientId: c.env.GOOGLE_CLIENT_ID,
@@ -82,17 +84,22 @@ app.get('/callback', async (c) => {
     grantType: 'authorization_code',
   })
   if (googleErrResponse) {
+    console.error('[GoogleHandler] Failed to get access token:', googleErrResponse)
     return googleErrResponse
   }
+  console.log('[GoogleHandler] Got access token, length:', accessToken.length)
 
   // Fetch the user info from Google
+  console.log('[GoogleHandler] Fetching user info from Google')
   const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   })
   if (!userResponse.ok) {
-    return c.text(`Failed to fetch user info: ${await userResponse.text()}`, 500)
+    const errorText = await userResponse.text()
+    console.error('[GoogleHandler] Failed to fetch user info:', errorText)
+    return c.text(`Failed to fetch user info: ${errorText}`, 500)
   }
 
   const { id, name, email } = (await userResponse.json()) as {
@@ -100,6 +107,7 @@ app.get('/callback', async (c) => {
     name: string
     email: string
   }
+  console.log('[GoogleHandler] Got user info:', { id, name, email })
 
   // Return back to the MCP client a new token
   const { redirectTo } = await c.env.OAUTH_PROVIDER.completeAuthorization({

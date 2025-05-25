@@ -15,16 +15,28 @@ export type ListDirectoryParams = z.infer<typeof listDirectorySchema>
 export function createListDirectoryTool(driveService: DriveService) {
   // The actual handler function
   async function listDirectory(params: ListDirectoryParams) {
-    const result = await driveService.listDirectory(params)
+    console.log('[listDirectory tool] Called with params:', params)
+    
+    try {
+      const result = await driveService.listDirectory(params)
+      
+      console.log('[listDirectory tool] Got result:', {
+        fileCount: result.files.length,
+        firstFile: result.files[0]?.name
+      })
 
-    // Format response according to MCP spec
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify(result, null, 2)
-        }
-      ]
+      // Format response according to MCP spec
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2)
+          }
+        ]
+      }
+    } catch (error) {
+      console.error('[listDirectory tool] Error:', error)
+      throw error
     }
   }
 

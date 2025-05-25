@@ -98,3 +98,30 @@ async callTool(name: string, args: Record<string, any>) {
    ```
 3. Run `npm run dev` to start local server
 4. Test with MCP Inspector at `http://localhost:8788/sse`
+
+## Troubleshooting
+
+### 403 Forbidden Error from Google Drive API
+
+If you get a "403 Forbidden" error when calling Drive tools, check:
+
+1. **API Enabled**: Ensure Google Drive API is enabled in your Google Cloud Console
+2. **OAuth Scopes**: The app requests these scopes:
+   - `email` and `profile` (basic user info)
+   - `https://www.googleapis.com/auth/drive` (full Drive access)
+   - `https://www.googleapis.com/auth/drive.file` (file-level access)
+3. **Re-authenticate**: If you previously authenticated without Drive scopes, disconnect and reconnect
+4. **Check Logs**: The service includes detailed logging:
+   - Token validation
+   - Request URLs and headers
+   - Response status and error bodies
+
+### Debugging
+
+All components include detailed logging prefixed with their module name:
+- `[GoogleHandler]` - OAuth flow
+- `[MyMCP]` - MCP server initialization
+- `[GoogleDriveService]` - Drive API calls
+- `[listDirectory tool]` - Tool execution
+
+Check the Cloudflare Workers logs or local dev console for debugging information.

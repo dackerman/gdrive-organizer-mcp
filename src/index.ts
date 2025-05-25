@@ -24,6 +24,13 @@ export class MyMCP extends McpAgent<Env, {}, Props> {
   private driveService!: GoogleDriveService
 
   async init() {
+    console.log('[MyMCP] Initializing with props:', {
+      name: this.props.name,
+      email: this.props.email,
+      hasAccessToken: !!this.props.accessToken,
+      tokenLength: this.props.accessToken?.length
+    })
+
     // Initialize the drive service with the access token
     this.driveService = new GoogleDriveService(this.props.accessToken)
 
@@ -32,6 +39,8 @@ export class MyMCP extends McpAgent<Env, {}, Props> {
     
     // Add the list_directory tool
     const listDirectoryTool = createListDirectoryTool(this.driveService)
+    console.log('[MyMCP] Registering tool:', listDirectoryTool.name)
+    
     this.server.tool(
       listDirectoryTool.name,
       listDirectoryTool.schema,
