@@ -5,6 +5,8 @@ import { z } from 'zod'
 import { GoogleHandler } from './google-handler'
 import { addTool } from './tools/math'
 import { createListDirectoryTool } from './tools/list-directory'
+import { createReadFileTool } from './tools/read-file'
+import { createSearchFilesTool } from './tools/search-files'
 import { GoogleDriveService } from './services/google-drive'
 
 // Context from the auth process, encrypted & stored in the auth token
@@ -45,6 +47,26 @@ export class MyMCP extends McpAgent<Env, {}, Props> {
       listDirectoryTool.name,
       listDirectoryTool.schema,
       listDirectoryTool.handler
+    )
+
+    // Add the read_file tool
+    const readFileTool = createReadFileTool(this.driveService)
+    console.log('[MyMCP] Registering tool:', readFileTool.name)
+    
+    this.server.tool(
+      readFileTool.name,
+      readFileTool.schema,
+      readFileTool.handler
+    )
+
+    // Add the search_files tool
+    const searchFilesTool = createSearchFilesTool(this.driveService)
+    console.log('[MyMCP] Registering tool:', searchFilesTool.name)
+    
+    this.server.tool(
+      searchFilesTool.name,
+      searchFilesTool.schema,
+      searchFilesTool.handler
     )
   }
 }

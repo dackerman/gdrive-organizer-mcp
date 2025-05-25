@@ -1,4 +1,4 @@
-import { DriveService, DriveFile, ListDirectoryResult } from '../types/drive'
+import { DriveService, DriveFile, ListDirectoryResult, ReadFileResult, SearchFilesResult } from '../types/drive'
 
 const GOOGLE_DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3'
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
@@ -197,5 +197,284 @@ export class GoogleDriveService implements DriveService {
       console.error('[GoogleDriveService] Error getting file path:', error)
       return `/<${parentId}>/${fileName}`
     }
+  }
+
+  async readFile(params: {
+    fileId: string
+    maxSize?: number
+    startOffset?: number
+    endOffset?: number
+  }): Promise<ReadFileResult> {
+    const {
+      fileId,
+      maxSize = 1048576, // 1MB default
+      startOffset = 0,
+      endOffset
+    } = params
+
+    console.log('[GoogleDriveService] readFile called with:', {
+      fileId,
+      maxSize,
+      startOffset,
+      endOffset
+    })
+
+    // First, get file metadata to check mime type and size
+    const metadataUrl = `${GOOGLE_DRIVE_API_BASE}/files/${fileId}?fields=id,name,mimeType,size`
+    console.log('[GoogleDriveService] Fetching file metadata:', metadataUrl)
+
+    const metadataResponse = await fetch(metadataUrl, {
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Accept': 'application/json'
+      }
+    })
+
+    if (!metadataResponse.ok) {
+      const errorText = await metadataResponse.text()
+      console.error('[GoogleDriveService] Failed to get file metadata:', metadataResponse.status, errorText)
+      throw new Error(`Failed to get file metadata: ${metadataResponse.status} ${metadataResponse.statusText}`)
+    }
+
+    const metadata = await metadataResponse.json() as {
+      id: string
+      name: string
+      mimeType: string
+      size?: string
+    }
+
+    console.log('[GoogleDriveService] File metadata:', metadata)
+
+    const fileSize = metadata.size ? parseInt(metadata.size, 10) : 0
+    const isGoogleDoc = metadata.mimeType.startsWith('application/vnd.google-apps.')
+
+    // Handle Google Docs differently - they need to be exported
+    if (isGoogleDoc) {
+      return this.readGoogleDoc(fileId, metadata.mimeType, maxSize)
+    }
+
+    // For binary files, download content
+    const downloadUrl = `${GOOGLE_DRIVE_API_BASE}/files/${fileId}?alt=media`
+    
+    // Calculate range for partial content
+    const effectiveEndOffset = endOffset ?? Math.min(startOffset + maxSize - 1, fileSize - 1)
+    const rangeHeader = `bytes=${startOffset}-${effectiveEndOffset}`
+    
+    console.log('[GoogleDriveService] Downloading file content with range:', rangeHeader)
+
+    const contentResponse = await fetch(downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Range': rangeHeader
+      }
+    })
+
+    if (!contentResponse.ok && contentResponse.status !== 206) { // 206 is partial content
+      const errorText = await contentResponse.text()
+      console.error('[GoogleDriveService] Failed to download file:', contentResponse.status, errorText)
+      throw new Error(`Failed to download file: ${contentResponse.status} ${contentResponse.statusText}`)
+    }
+
+    const contentType = contentResponse.headers.get('content-type') || metadata.mimeType
+    const contentLength = parseInt(contentResponse.headers.get('content-length') || '0', 10)
+    
+    // Determine if content is text or binary
+    const isText = contentType.startsWith('text/') || 
+                   contentType.includes('json') || 
+                   contentType.includes('xml') ||
+                   contentType.includes('javascript') ||
+                   contentType.includes('typescript')
+
+    let content: string
+    let encoding: string
+
+    if (isText) {
+      content = await contentResponse.text()
+      encoding = 'utf-8'
+    } else {
+      // For binary files, return base64 encoded
+      const buffer = await contentResponse.arrayBuffer()
+      content = btoa(String.fromCharCode(...new Uint8Array(buffer)))
+      encoding = 'base64'
+    }
+
+    const truncated = effectiveEndOffset < fileSize - 1
+
+    console.log('[GoogleDriveService] File read complete:', {
+      size: contentLength,
+      truncated,
+      encoding,
+      mimeType: contentType
+    })
+
+    return {
+      content,
+      mimeType: contentType,
+      size: contentLength,
+      truncated,
+      encoding
+    }
+  }
+
+  private async readGoogleDoc(fileId: string, mimeType: string, maxSize: number): Promise<ReadFileResult> {
+    // Map Google Docs types to export formats
+    const exportMimeTypes: Record<string, string> = {
+      'application/vnd.google-apps.document': 'text/plain',
+      'application/vnd.google-apps.spreadsheet': 'text/csv',
+      'application/vnd.google-apps.presentation': 'text/plain',
+      'application/vnd.google-apps.drawing': 'image/png',
+      'application/vnd.google-apps.script': 'application/vnd.google-apps.script+json'
+    }
+
+    const exportMimeType = exportMimeTypes[mimeType] || 'text/plain'
+    const exportUrl = `${GOOGLE_DRIVE_API_BASE}/files/${fileId}/export?mimeType=${encodeURIComponent(exportMimeType)}`
+
+    console.log('[GoogleDriveService] Exporting Google Doc as:', exportMimeType)
+
+    const response = await fetch(exportUrl, {
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Accept': exportMimeType
+      }
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('[GoogleDriveService] Failed to export Google Doc:', response.status, errorText)
+      throw new Error(`Failed to export Google Doc: ${response.status} ${response.statusText}`)
+    }
+
+    const content = await response.text()
+    const truncated = content.length > maxSize
+
+    return {
+      content: truncated ? content.substring(0, maxSize) : content,
+      mimeType: exportMimeType,
+      size: content.length,
+      truncated,
+      encoding: 'utf-8'
+    }
+  }
+
+  async searchFiles(params: {
+    query: string
+    folderId?: string
+    mimeType?: string
+    namePattern?: string
+    maxResults?: number
+  }): Promise<SearchFilesResult> {
+    const {
+      query,
+      folderId,
+      mimeType,
+      namePattern,
+      maxResults = 50
+    } = params
+
+    console.log('[GoogleDriveService] searchFiles called with:', params)
+
+    // Build search query
+    const queryParts: string[] = []
+    
+    // Add text search
+    if (query) {
+      queryParts.push(`(name contains '${query}' or fullText contains '${query}')`)
+    }
+    
+    // Add folder filter
+    if (folderId) {
+      queryParts.push(`'${folderId}' in parents`)
+    }
+    
+    // Add mime type filter
+    if (mimeType) {
+      queryParts.push(`mimeType = '${mimeType}'`)
+    }
+    
+    // Always exclude trashed files
+    queryParts.push('trashed = false')
+    
+    const driveQuery = queryParts.join(' and ')
+    
+    console.log('[GoogleDriveService] Search query:', driveQuery)
+
+    // Make API request
+    const url = new URL(`${GOOGLE_DRIVE_API_BASE}/files`)
+    url.searchParams.append('q', driveQuery)
+    url.searchParams.append('pageSize', maxResults.toString())
+    url.searchParams.append('fields', 'files(id,name,mimeType,size,createdTime,modifiedTime,parents,shared,sharingUser,permissions)')
+    url.searchParams.append('orderBy', 'modifiedTime desc')
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Accept': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('[GoogleDriveService] Search failed:', response.status, errorText)
+      throw new Error(`Search failed: ${response.status} ${response.statusText}`)
+    }
+
+    const data = await response.json() as {
+      files: Array<{
+        id: string
+        name: string
+        mimeType: string
+        size?: string
+        createdTime: string
+        modifiedTime: string
+        parents?: string[]
+        shared?: boolean
+        sharingUser?: any
+        permissions?: Array<{ role: string }>
+      }>
+    }
+
+    console.log('[GoogleDriveService] Search returned', data.files.length, 'files')
+
+    // Filter by name pattern if provided
+    let files = data.files
+    if (namePattern) {
+      try {
+        const regex = new RegExp(namePattern, 'i')
+        files = files.filter(file => regex.test(file.name))
+        console.log('[GoogleDriveService] After name pattern filter:', files.length, 'files')
+      } catch (e) {
+        console.error('[GoogleDriveService] Invalid regex pattern:', namePattern, e)
+      }
+    }
+
+    // Get paths for all files
+    const pathCache = new Map<string, string>()
+    const driveFiles: DriveFile[] = await Promise.all(
+      files.map(async (file) => {
+        const isFolder = file.mimeType === FOLDER_MIME_TYPE
+        const isShared = file.shared || false
+        const isPublic = file.permissions?.some(p => p.role === 'reader' || p.role === 'writer') || false
+        
+        const path = await this.getFilePath(file.id, file.name, file.parents?.[0], pathCache)
+        const folderDepth = path.split('/').filter(p => p).length - 1
+
+        return {
+          id: file.id,
+          name: file.name,
+          mimeType: file.mimeType,
+          size: file.size ? parseInt(file.size, 10) : undefined,
+          createdTime: file.createdTime,
+          modifiedTime: file.modifiedTime,
+          parents: file.parents || [],
+          path,
+          isFolder,
+          isShared,
+          sharingStatus: isPublic ? 'public' : (isShared ? 'shared' : 'private'),
+          folderDepth
+        }
+      })
+    )
+
+    return { files: driveFiles }
   }
 }

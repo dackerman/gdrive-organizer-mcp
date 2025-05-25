@@ -38,7 +38,9 @@ describe('listDirectory tool', () => {
     }
 
     const mockDriveService: DriveService = {
-      listDirectory: vi.fn().mockResolvedValue(mockResult)
+      listDirectory: vi.fn().mockResolvedValue(mockResult),
+      readFile: vi.fn(),
+      searchFiles: vi.fn()
     }
 
     // Create tool with mocked service
@@ -68,7 +70,9 @@ describe('listDirectory tool', () => {
 
   it('should use default values when parameters are not provided', async () => {
     const mockDriveService: DriveService = {
-      listDirectory: vi.fn().mockResolvedValue({ files: [] })
+      listDirectory: vi.fn().mockResolvedValue({ files: [] }),
+      readFile: vi.fn(),
+      searchFiles: vi.fn()
     }
 
     const tool = createListDirectoryTool(mockDriveService)
@@ -80,7 +84,9 @@ describe('listDirectory tool', () => {
 
   it('should have correct metadata', () => {
     const mockDriveService: DriveService = {
-      listDirectory: vi.fn()
+      listDirectory: vi.fn(),
+      readFile: vi.fn(),
+      searchFiles: vi.fn()
     }
 
     const tool = createListDirectoryTool(mockDriveService)

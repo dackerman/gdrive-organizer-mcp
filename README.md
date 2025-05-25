@@ -13,9 +13,19 @@ This server provides tools for exploring, analyzing, and reorganizing your Googl
   - Shows file paths, sizes, and sharing status
   - Supports filtering by folder and shared files
 
-### Coming Soon
-- **`read_file`** - Read file contents with pagination support
+- **`read_file`** - Read file contents with smart handling
+  - Supports pagination for large files (default 1MB chunks)
+  - Automatically exports Google Docs to readable formats
+  - Returns base64 encoding for binary files
+  - Handles text files with UTF-8 encoding
+
 - **`search_files`** - Search across your entire Drive
+  - Search by file name or content
+  - Filter by folder, MIME type, or name pattern (regex)
+  - Sort results by modification time
+  - Returns same rich metadata as list_directory
+
+### Coming Soon
 - **`create_folder`** - Create new folders for organization
 - **`execute_plan`** - Execute AI-generated organization plans
 - **`get_operation_status`** - Monitor long-running operations
@@ -117,7 +127,10 @@ Once connected, you can ask Claude to:
 
 - "List all files in my Drive root folder"
 - "Show me what's in my Documents folder"
-- "Find all PDF files in my Drive" (coming soon)
+- "Read the contents of my meeting notes file"
+- "Find all PDF files in my Drive"
+- "Search for budget spreadsheets from 2024"
+- "Show me all files containing the word 'proposal'"
 - "Help me organize my scattered project files" (coming soon)
 - "Create a folder structure for my tax documents" (coming soon)
 
