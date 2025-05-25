@@ -3,6 +3,7 @@ import { McpAgent } from 'agents/mcp'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { GoogleHandler } from './google-handler'
+import { addTool } from './tools/math'
 
 // Context from the auth process, encrypted & stored in the auth token
 // and provided to the MyMCP as this.props
@@ -19,9 +20,7 @@ export class MyMCP extends McpAgent<Env, {}, Props> {
   })
 
   async init() {
-    this.server.tool('add', { a: z.number(), b: z.number() }, async ({ a, b }) => ({
-      content: [{ type: 'text', text: String(a + b) }],
-    }))
+    this.server.tool(addTool.name, addTool.schema, addTool.handler)
   }
 }
 
