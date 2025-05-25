@@ -3,7 +3,6 @@ import { McpAgent } from 'agents/mcp'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { GoogleHandler } from './google-handler'
-import { addTool } from './tools/math'
 import { createListDirectoryTool } from './tools/list-directory'
 import { createReadFileTool } from './tools/read-file'
 import { createSearchFilesTool } from './tools/search-files'
@@ -36,38 +35,16 @@ export class MyMCP extends McpAgent<Env, {}, Props> {
     // Initialize the drive service with the access token
     this.driveService = new GoogleDriveService(this.props.accessToken)
 
-    // Keep the math tool for now
-    this.server.tool(addTool.name, addTool.schema, addTool.handler)
+    const tools = [
+      createListDirectoryTool(this.driveService),
+      createReadFileTool(this.driveService),
+      createSearchFilesTool(this.driveService)
+    ]
     
-    // Add the list_directory tool
-    const listDirectoryTool = createListDirectoryTool(this.driveService)
-    console.log('[MyMCP] Registering tool:', listDirectoryTool.name)
-    
-    this.server.tool(
-      listDirectoryTool.name,
-      listDirectoryTool.schema,
-      listDirectoryTool.handler
-    )
-
-    // Add the read_file tool
-    const readFileTool = createReadFileTool(this.driveService)
-    console.log('[MyMCP] Registering tool:', readFileTool.name)
-    
-    this.server.tool(
-      readFileTool.name,
-      readFileTool.schema,
-      readFileTool.handler
-    )
-
-    // Add the search_files tool
-    const searchFilesTool = createSearchFilesTool(this.driveService)
-    console.log('[MyMCP] Registering tool:', searchFilesTool.name)
-    
-    this.server.tool(
-      searchFilesTool.name,
-      searchFilesTool.schema,
-      searchFilesTool.handler
-    )
+    tools.forEach((tool) => {
+      console.log('[MyMCP] Registering tool:', tool.name)
+      this.server.tool(tool.name, tool.description, tool.schema, tool.handler)
+    })
   }
 }
 
