@@ -16,16 +16,50 @@ The MCP server (powered by [Cloudflare Workers](https://developers.cloudflare.co
 Clone the repo & install dependencies: `npm install`
 
 ### For Production
-Create a new [Google Cloud OAuth App](https://cloud.google.com/iam/docs/workforce-manage-oauth-app): 
-- For the Homepage URL, specify `https://mcp-google-oauth.<your-subdomain>.workers.dev`
-- For the Authorization callback URL, specify `https://mcp-google-oauth.<your-subdomain>.workers.dev/callback`
-- Note your Client ID and generate a Client secret. 
-- Set secrets via Wrangler
+
+#### Create Google OAuth Client
+
+You can create the OAuth client using the Google Cloud Console or CLI:
+
+**Option 1: Using Google Cloud Console**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Select your project or create a new one
+3. Click "Create Credentials" → "OAuth client ID"
+4. Select "Web application" as the application type
+5. Configure the OAuth client:
+   - Name: "GDrive Organizer MCP"
+   - Authorized JavaScript origins:
+     - `https://mcp-google-oauth.<your-subdomain>.workers.dev`
+   - Authorized redirect URIs:
+     - `https://mcp-google-oauth.<your-subdomain>.workers.dev/callback`
+6. Click "Create" and save your Client ID and Client Secret
+
+**Option 2: Using gcloud CLI**
+```bash
+# Install gcloud CLI if not already installed
+# See: https://cloud.google.com/sdk/docs/install
+
+# Authenticate and select project
+gcloud auth login
+gcloud projects list
+gcloud config set project YOUR_PROJECT_ID
+
+# Enable required APIs
+gcloud services enable drive.googleapis.com
+gcloud services enable iamcredentials.googleapis.com
+
+# Create OAuth consent screen and client via Console
+# (OAuth 2.0 clients must be created through the Console)
+echo "Open this URL to create OAuth credentials:"
+echo "https://console.cloud.google.com/apis/credentials?project=$(gcloud config get-value project)"
+```
+
+#### Set Cloudflare Secrets
 ```bash
 wrangler secret put GOOGLE_CLIENT_ID
 wrangler secret put GOOGLE_CLIENT_SECRET
 wrangler secret put COOKIE_ENCRYPTION_KEY # add any random string here e.g. openssl rand -hex 32
-wrangler secret put HOSTED_DOMAIN # optional: use this when restrict google account domain
+wrangler secret put HOSTED_DOMAIN # optional: use this to restrict to a specific Google Workspace domain
 ```
 #### Set up a KV namespace
 - Create the KV namespace: 
@@ -75,13 +109,21 @@ Once the Tools (under 🔨) show up in the interface, you can ask Claude to use 
 
 ### For Local Development
 If you'd like to iterate and test your MCP server, you can do so in local development. This will require you to create another OAuth App on Google Cloud: 
-- For the Homepage URL, specify `http://localhost:8788`
-- For the Authorization callback URL, specify `http://localhost:8788/callback`
-- Note your Client ID and generate a Client secret. 
-- Create a `.dev.vars` file in your project root with: 
+
+1. Follow the same steps as production, but use these URLs:
+   - Authorized JavaScript origins: `http://localhost:8788`
+   - Authorized redirect URIs: `http://localhost:8788/callback`
+
+2. Create a `.dev.vars` file in your project root with: 
 ```
 GOOGLE_CLIENT_ID=your_development_google_cloud_oauth_client_id
 GOOGLE_CLIENT_SECRET=your_development_google_cloud_oauth_client_secret
+COOKIE_ENCRYPTION_KEY=any_random_string_for_development
+```
+
+**Note for NixOS users:** If you encounter TLS certificate errors, run the dev server with:
+```bash
+env SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt pnpm dev
 ```
 
 #### Develop & Test
