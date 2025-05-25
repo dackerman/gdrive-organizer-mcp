@@ -9,14 +9,14 @@ import { createSearchFilesTool } from './tools/search-files'
 import { GoogleDriveService } from './services/google-drive'
 
 // Context from the auth process, encrypted & stored in the auth token
-// and provided to the MyMCP as this.props
+// and provided to the GDriveOrganizerMCP as this.props
 type Props = {
   name: string
   email: string
   accessToken: string
 }
 
-export class MyMCP extends McpAgent<Env, {}, Props> {
+export class GDriveOrganizerMCP extends McpAgent<Env, {}, Props> {
   server = new McpServer({
     name: 'Google Drive Organizer MCP',
     version: '0.0.1',
@@ -25,7 +25,7 @@ export class MyMCP extends McpAgent<Env, {}, Props> {
   private driveService!: GoogleDriveService
 
   async init() {
-    console.log('[MyMCP] Initializing with props:', {
+    console.log('[GDriveOrganizerMCP] Initializing with props:', {
       name: this.props.name,
       email: this.props.email,
       hasAccessToken: !!this.props.accessToken,
@@ -42,7 +42,7 @@ export class MyMCP extends McpAgent<Env, {}, Props> {
     ]
     
     tools.forEach((tool) => {
-      console.log('[MyMCP] Registering tool:', tool.name)
+      console.log('[GDriveOrganizerMCP] Registering tool:', tool.name)
       this.server.tool(tool.name, tool.description, tool.schema, tool.handler)
     })
   }
@@ -50,7 +50,7 @@ export class MyMCP extends McpAgent<Env, {}, Props> {
 
 export default new OAuthProvider({
   apiRoute: '/sse',
-  apiHandler: MyMCP.mount('/sse') as any,
+  apiHandler: GDriveOrganizerMCP.mount('/sse') as any,
   defaultHandler: GoogleHandler as any,
   authorizeEndpoint: '/authorize',
   tokenEndpoint: '/token',

@@ -31,7 +31,7 @@ This is a **Google Drive Organizer MCP Server** deployed on Cloudflare Workers t
 ### Key Components
 
 1. **`src/index.ts`**: Main entry point containing:
-   - `MyMCP` class extending `DurableMCP` - handles MCP tool implementations
+   - `GDriveOrganizerMCP` class extending `DurableMCP` - handles MCP tool implementations
    - OAuth provider setup for client authentication
    - Route handlers for SSE connections and OAuth callbacks
 
@@ -59,7 +59,7 @@ Required secrets:
 
 ### Adding New Tools
 
-Tools are added to the `MyMCP` class in `src/index.ts`. Example:
+Tools are added to the `GDriveOrganizerMCP` class in `src/index.ts`. Example:
 
 ```typescript
 async listTools() {
@@ -120,7 +120,7 @@ If you get a "403 Forbidden" error when calling Drive tools, check:
 
 All components include detailed logging prefixed with their module name:
 - `[GoogleHandler]` - OAuth flow
-- `[MyMCP]` - MCP server initialization
+- `[GDriveOrganizerMCP]` - MCP server initialization
 - `[GoogleDriveService]` - Drive API calls
 - `[listDirectory tool]` - Tool execution
 
