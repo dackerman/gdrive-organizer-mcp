@@ -34,7 +34,7 @@ describe('GoogleDriveService Integration Tests', () => {
     it('should list files in root directory', async () => {
       const result = await service.listDirectory({
         folderId: 'root',
-        maxResults: 10
+        pageSize: 10
       })
 
       expect(result).toBeDefined()
@@ -51,10 +51,10 @@ describe('GoogleDriveService Integration Tests', () => {
       }
     })
 
-    it('should respect maxResults parameter', async () => {
+    it('should respect pageSize parameter', async () => {
       const result = await service.listDirectory({
         folderId: 'root',
-        maxResults: 2
+        pageSize: 2
       })
 
       expect(result.files.length).toBeLessThanOrEqual(2)
@@ -84,7 +84,7 @@ describe('GoogleDriveService Integration Tests', () => {
       // Verify the folder exists
       const listResult = await service.listDirectory({
         folderId: 'root',
-        maxResults: 100
+        pageSize: 100
       })
       
       const createdFolder = listResult.files.find(f => f.id === testFolderId)
