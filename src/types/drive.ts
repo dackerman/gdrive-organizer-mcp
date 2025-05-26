@@ -15,6 +15,8 @@ export interface DriveFile {
 
 export interface ListDirectoryResult {
   files: DriveFile[]
+  nextPageToken?: string
+  totalResults?: number
 }
 
 export interface ReadFileResult {
@@ -31,9 +33,12 @@ export interface SearchFilesResult {
 
 export interface DriveService {
   listDirectory(params: {
+    folderPath?: string
     folderId?: string
     includeShared?: boolean
-    maxResults?: number
+    onlyDirectories?: boolean
+    pageSize?: number
+    pageToken?: string
   }): Promise<ListDirectoryResult>
 
   readFile(params: {

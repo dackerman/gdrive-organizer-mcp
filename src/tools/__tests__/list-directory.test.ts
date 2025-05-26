@@ -46,21 +46,40 @@ describe('listDirectory tool', () => {
 
     // Test the handler
     const result = await tool.handler(
-      { folderId: 'test-folder-id', maxResults: 50 }
+      { folderPath: '/test-folder', pageSize: 50 }
     )
 
     // Verify service was called correctly
     expect(mockDriveService.listDirectory).toHaveBeenCalledWith({
-      folderId: 'test-folder-id',
-      maxResults: 50
+      folderPath: '/test-folder',
+      pageSize: 50
     })
 
     // Verify response format
+    const expectedFormattedResult = {
+      files: [
+        {
+          path: '/test-file.txt',
+          name: 'test-file.txt',
+          isDirectory: false,
+          isShared: false
+        },
+        {
+          path: '/Documents',
+          name: 'Documents',
+          isDirectory: true,
+          isShared: false
+        }
+      ],
+      nextPageToken: undefined,
+      hasMore: false
+    }
+    
     expect(result).toEqual({
       content: [
         {
           type: 'text',
-          text: JSON.stringify(mockResult, null, 2)
+          text: JSON.stringify(expectedFormattedResult, null, 2)
         }
       ]
     })
@@ -68,7 +87,7 @@ describe('listDirectory tool', () => {
 
   it('should use default values when parameters are not provided', async () => {
     const mockDriveService = createMockDriveService()
-    vi.mocked(mockDriveService.listDirectory).mockResolvedValue({ files: [] })
+    vi.mocked(mockDriveService.listDirectory).mockResolvedValue({ files: [], nextPageToken: undefined })
 
     const tool = createListDirectoryTool(mockDriveService)
 
@@ -83,7 +102,7 @@ describe('listDirectory tool', () => {
     const tool = createListDirectoryTool(mockDriveService)
 
     expect(tool.name).toBe('list_directory')
-    expect(tool.description).toBe('Lists files and folders in a specified Google Drive directory')
+    expect(tool.description).toBe('Lists files and folders in a Google Drive directory. Supports pagination to limit response size. Use folderPath (e.g., "/Documents") instead of folder IDs for easier navigation.')
     expect(tool.schema).toBeDefined()
   })
 })

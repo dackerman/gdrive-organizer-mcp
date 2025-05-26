@@ -142,7 +142,7 @@ export class GoogleDriveService implements DriveService {
       }
       
       // Search for the part in current directory
-      const children = await this.listDirectory({ folderId: currentId, maxResults: 1000 })
+      const children = await this.listDirectory({ folderId: currentId, pageSize: 100 })
       const found = children.files.find(file => file.name === part)
       
       if (!found) {
@@ -212,7 +212,7 @@ export class GoogleDriveService implements DriveService {
           // Only traverse children if we haven't reached maxDepth
           if (depth < maxDepth) {
             try {
-              const contents = await this.listDirectory({ folderId: id, maxResults: 100 })
+              const contents = await this.listDirectory({ folderId: id, pageSize: 100 })
               
               for (const item of contents.files) {
                 if (item.isFolder) {
@@ -263,7 +263,7 @@ export class GoogleDriveService implements DriveService {
           if (depth >= maxDepth) return
           
           try {
-            const contents = await this.listDirectory({ folderId: id, maxResults: 100 })
+            const contents = await this.listDirectory({ folderId: id, pageSize: 100 })
             
             for (const item of contents.files) {
               const itemPath = path === '/' ? '/' + item.name : path + '/' + item.name
@@ -330,35 +330,57 @@ export class GoogleDriveService implements DriveService {
   
 
   async listDirectory(params: {
+    folderPath?: string
     folderId?: string
     includeShared?: boolean
-    maxResults?: number
+    onlyDirectories?: boolean
+    pageSize?: number
+    pageToken?: string
   }): Promise<ListDirectoryResult> {
     const {
-      folderId = 'root',
+      folderPath,
+      folderId,
       includeShared = true,
-      maxResults = 100
+      onlyDirectories = false,
+      pageSize = 20,
+      pageToken
     } = params
 
     console.log('[GoogleDriveService] listDirectory called with:', {
+      folderPath,
       folderId,
       includeShared,
-      maxResults
+      onlyDirectories,
+      pageSize,
+      pageToken
     })
 
+    // Resolve folder ID from path if provided
+    let targetFolderId = folderId || 'root'
+    if (folderPath) {
+      targetFolderId = await this.resolvePathToId(folderPath)
+    }
+
     // Build query
-    let query = `'${folderId}' in parents`
+    let query = `'${targetFolderId}' in parents`
     if (!includeShared) {
       query += ' and sharedWithMe = false'
+    }
+    if (onlyDirectories) {
+      query += ` and mimeType = '${FOLDER_MIME_TYPE}'`
     }
     query += ' and trashed = false'
 
     // Make API request
     const url = new URL(`${GOOGLE_DRIVE_API_BASE}/files`)
     url.searchParams.append('q', query)
-    url.searchParams.append('pageSize', maxResults.toString())
-    url.searchParams.append('fields', 'files(id,name,mimeType,size,createdTime,modifiedTime,parents,shared,sharingUser,permissions)')
+    url.searchParams.append('pageSize', pageSize.toString())
+    url.searchParams.append('fields', 'nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,parents,shared,sharingUser,permissions)')
     url.searchParams.append('orderBy', 'folder,name')
+    
+    if (pageToken) {
+      url.searchParams.append('pageToken', pageToken)
+    }
 
     console.log('[GoogleDriveService] Request URL:', url.toString())
     console.log('[GoogleDriveService] Query:', query)
@@ -393,6 +415,7 @@ export class GoogleDriveService implements DriveService {
     }
 
     const data = await response.json() as {
+      nextPageToken?: string
       files: Array<{
         id: string
         name: string
@@ -409,6 +432,7 @@ export class GoogleDriveService implements DriveService {
 
     console.log('[GoogleDriveService] Response data:', {
       fileCount: data.files.length,
+      nextPageToken: data.nextPageToken,
       files: data.files.slice(0, 3).map(f => ({ id: f.id, name: f.name, mimeType: f.mimeType }))
     })
 
@@ -448,7 +472,10 @@ export class GoogleDriveService implements DriveService {
       sample: files.slice(0, 3).map(f => ({ name: f.name, path: f.path, isFolder: f.isFolder }))
     })
 
-    return { files }
+    return { 
+      files,
+      nextPageToken: data.nextPageToken
+    }
   }
 
   private async getFilePath(
