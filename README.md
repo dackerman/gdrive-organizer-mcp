@@ -123,16 +123,76 @@ Restart Claude Desktop. When you first use a Drive tool, you'll be prompted to a
 
 ## Usage Examples
 
-Once connected, you can ask Claude to:
+### Natural Language Interactions
+
+Once connected to Claude Desktop, you can interact with your Google Drive using natural language. Here are example conversations:
+
+**Exploring your Drive:**
+```
+You: "What files do I have in my Drive?"
+Claude: I'll list your Google Drive files for you.
+[Uses list_directory tool]
+Claude: You have 47 files in your root folder, including:
+- Documents/ (folder, 12 files)
+- Photos/ (folder, 156 files) 
+- Budget_2024.xlsx (21.5 KB, modified yesterday)
+- Meeting_Notes.docx (8.3 KB, modified 3 days ago)
+...
+```
+
+**Reading file contents:**
+```
+You: "Can you read my meeting notes from last week?"
+Claude: I'll help you find and read your meeting notes.
+[Uses search_files to find recent meeting notes]
+[Uses read_file with path /Documents/Meeting_Notes_Dec2024.docx]
+Claude: Here are your meeting notes from December 15th:
+
+**Project Kickoff Meeting**
+- Attendees: Alice, Bob, Carol
+- Key decisions: Launch date set for Q1 2025
+- Action items: Alice to create timeline, Bob to review budget
+...
+```
+
+**Advanced search and analysis:**
+```
+You: "Find all my budget-related spreadsheets and tell me what projects they cover"
+Claude: I'll search for budget spreadsheets in your Drive.
+[Uses search_files with query "budget" and mimeType filter for spreadsheets]
+Claude: I found 5 budget spreadsheets:
+
+1. /Finance/Budget_2024_Final.xlsx - Annual company budget
+2. /Projects/Marketing_Campaign_Budget.xlsx - Q4 marketing spend
+3. /Personal/Home_Renovation_Budget.xlsx - Kitchen remodel costs
+...
+
+Would you like me to read any of these files to analyze the project details?
+```
+
+**File organization (coming soon):**
+```
+You: "My Documents folder is a mess. Can you help organize it by project?"
+Claude: I'll analyze your Documents folder and suggest an organization plan.
+[Uses list_directory and show_directory_tree to understand current structure]
+[Uses move_files to reorganize files into project folders]
+Claude: I've organized your 23 documents into these project folders:
+- /Documents/Projects/Website_Redesign/ (5 files)
+- /Documents/Projects/Q1_Planning/ (8 files)
+- /Documents/Admin/Contracts/ (4 files)
+...
+```
+
+### Simple Commands
+
+You can also use simple commands:
 
 - "List all files in my Drive root folder"
-- "Show me what's in my Documents folder"
-- "Read the contents of my meeting notes file"
+- "Show me what's in my Documents folder"  
+- "Read the contents of /Documents/project_plan.docx"
 - "Find all PDF files in my Drive"
-- "Search for budget spreadsheets from 2024"
-- "Show me all files containing the word 'proposal'"
-- "Help me organize my scattered project files" (coming soon)
-- "Create a folder structure for my tax documents" (coming soon)
+- "Search for files containing 'quarterly report'"
+- "Show me the folder structure of my Photos directory"
 
 ## Troubleshooting
 

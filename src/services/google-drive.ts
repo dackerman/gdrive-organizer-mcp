@@ -4,12 +4,227 @@ const GOOGLE_DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3'
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 
 export class GoogleDriveService implements DriveService {
+  // Path resolution cache to avoid repeated API calls
+  private pathToIdCache = new Map<string, string>()
+  private idToPathCache = new Map<string, string>()
+  
   constructor(private accessToken: string) {
     // Log token info (first and last few chars only for security)
     const tokenPreview = accessToken.length > 10 
       ? `${accessToken.substring(0, 4)}...${accessToken.substring(accessToken.length - 4)}`
       : '[token too short]'
     console.log('[GoogleDriveService] Initialized with token:', tokenPreview)
+    
+    // Initialize root path
+    this.pathToIdCache.set('/', 'root')
+    this.idToPathCache.set('root', '/')
+  }
+
+  // Path resolution methods
+  
+  /**
+   * Resolve a Google Drive path to a file/folder ID
+   * @param path - Full path from root like "/Documents/Projects" or "/" for root
+   * @returns Google Drive file ID
+   */
+  async resolvePathToId(path: string): Promise<string> {
+    // Normalize path
+    const normalizedPath = this.normalizePath(path)
+    
+    // Check cache first
+    if (this.pathToIdCache.has(normalizedPath)) {
+      return this.pathToIdCache.get(normalizedPath)!
+    }
+    
+    // Root case
+    if (normalizedPath === '/') {
+      return 'root'
+    }
+    
+    // Split path into components
+    const pathParts = normalizedPath.split('/').filter(part => part.length > 0)
+    
+    // Walk the path from root
+    let currentId = 'root'
+    let currentPath = ''
+    
+    for (const part of pathParts) {
+      currentPath += '/' + part
+      
+      // Check if we have this path cached
+      if (this.pathToIdCache.has(currentPath)) {
+        currentId = this.pathToIdCache.get(currentPath)!
+        continue
+      }
+      
+      // Search for the part in current directory
+      const children = await this.listDirectory({ folderId: currentId, maxResults: 1000 })
+      const found = children.files.find(file => file.name === part)
+      
+      if (!found) {
+        throw new Error(`Path not found: ${currentPath}`)
+      }
+      
+      currentId = found.id
+      
+      // Cache the resolved path
+      this.pathToIdCache.set(currentPath, currentId)
+      this.idToPathCache.set(currentId, currentPath)
+    }
+    
+    return currentId
+  }
+  
+  /**
+   * Resolve a Google Drive file ID to a path
+   * @param fileId - Google Drive file ID
+   * @returns Full path from root
+   */
+  async resolveIdToPath(fileId: string): Promise<string> {
+    // Check cache first
+    if (this.idToPathCache.has(fileId)) {
+      return this.idToPathCache.get(fileId)!
+    }
+    
+    // Root case
+    if (fileId === 'root') {
+      return '/'
+    }
+    
+    // Get file metadata to build path
+    const path = await this.buildPathFromId(fileId)
+    
+    // Cache the result
+    this.pathToIdCache.set(path, fileId)
+    this.idToPathCache.set(fileId, path)
+    
+    return path
+  }
+  
+  /**
+   * Build directory tree starting from a given path
+   * @param rootPath - Starting path (default: "/")
+   * @param maxDepth - Maximum depth to traverse (default: 10)
+   * @returns Array of directory paths
+   */
+  async buildDirectoryTree(rootPath: string = '/', maxDepth: number = 10): Promise<string[]> {
+    const directories: string[] = []
+    const rootId = await this.resolvePathToId(rootPath)
+    
+    await this.traverseDirectories(rootId, rootPath, directories, 0, maxDepth)
+    
+    return directories.sort()
+  }
+  
+  /**
+   * Build file tree starting from a given path
+   * @param rootPath - Starting path (default: "/")
+   * @param maxDepth - Maximum depth to traverse (default: 10)
+   * @returns Array of file paths
+   */
+  async buildFileTree(rootPath: string = '/', maxDepth: number = 10): Promise<string[]> {
+    const files: string[] = []
+    const rootId = await this.resolvePathToId(rootPath)
+    
+    await this.traverseFiles(rootId, rootPath, files, 0, maxDepth)
+    
+    return files.sort()
+  }
+  
+  // Helper methods
+  
+  private normalizePath(path: string): string {
+    // Handle empty path
+    if (!path || path === '') return '/'
+    
+    // Ensure path starts with /
+    if (!path.startsWith('/')) path = '/' + path
+    
+    // Remove trailing slash (except for root)
+    if (path.length > 1 && path.endsWith('/')) {
+      path = path.slice(0, -1)
+    }
+    
+    return path
+  }
+  
+  private async buildPathFromId(fileId: string): Promise<string> {
+    const url = `${GOOGLE_DRIVE_API_BASE}/files/${fileId}?fields=id,name,parents`
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Accept': 'application/json'
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get file metadata: ${response.status}`)
+    }
+    
+    const file = await response.json() as { id: string, name: string, parents?: string[] }
+    
+    // If no parents, this is likely in root
+    if (!file.parents || file.parents.length === 0) {
+      return '/' + file.name
+    }
+    
+    // Recursively build parent path
+    const parentPath = await this.resolveIdToPath(file.parents[0])
+    return parentPath === '/' ? '/' + file.name : parentPath + '/' + file.name
+  }
+  
+  private async traverseDirectories(
+    folderId: string, 
+    currentPath: string, 
+    directories: string[], 
+    depth: number, 
+    maxDepth: number
+  ): Promise<void> {
+    if (depth >= maxDepth) return
+    
+    directories.push(currentPath)
+    
+    const contents = await this.listDirectory({ folderId, maxResults: 1000 })
+    
+    for (const item of contents.files) {
+      if (item.isFolder) {
+        const childPath = currentPath === '/' ? '/' + item.name : currentPath + '/' + item.name
+        
+        // Cache the path
+        this.pathToIdCache.set(childPath, item.id)
+        this.idToPathCache.set(item.id, childPath)
+        
+        await this.traverseDirectories(item.id, childPath, directories, depth + 1, maxDepth)
+      }
+    }
+  }
+  
+  private async traverseFiles(
+    folderId: string, 
+    currentPath: string, 
+    files: string[], 
+    depth: number, 
+    maxDepth: number
+  ): Promise<void> {
+    if (depth >= maxDepth) return
+    
+    const contents = await this.listDirectory({ folderId, maxResults: 1000 })
+    
+    for (const item of contents.files) {
+      const itemPath = currentPath === '/' ? '/' + item.name : currentPath + '/' + item.name
+      
+      // Cache the path
+      this.pathToIdCache.set(itemPath, item.id)
+      this.idToPathCache.set(item.id, itemPath)
+      
+      if (item.isFolder) {
+        // Recurse into subdirectories
+        await this.traverseFiles(item.id, itemPath, files, depth + 1, maxDepth)
+      } else {
+        // Add file to list
+        files.push(itemPath)
+      }
+    }
   }
 
   async listDirectory(params: {

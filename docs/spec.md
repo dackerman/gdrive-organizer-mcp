@@ -7,10 +7,10 @@ Build a remote Model Context Protocol (MCP) server that enables AI assistants (l
 ## Key Design Principles
 
 1. **Conversational AI-First**: Designed for back-and-forth conversation with Claude Desktop
-2. **Plan-Based Execution**: Operations are grouped into logical plans that can be reviewed before execution
+2. **Path-Based Operations**: Uses human-readable file paths instead of Google Drive IDs
 3. **Synchronous Operations**: All operations complete before returning
-4. **Resumable**: Partial completion is acceptable; AI can reassess and continue
-5. **Auditable**: Complete history logged to Google Drive for user reference
+4. **Tree Navigation**: Provides tools to explore directory and file structures
+5. **Simple Move Operations**: Move/rename operations using intuitive from/to paths
 6. **Safe**: Clear error messages and validation
 
 ## Architecture
@@ -24,10 +24,39 @@ Build a remote Model Context Protocol (MCP) server that enables AI assistants (l
 
 ## Core MCP Tools
 
-### 1. File System Operations
+### 1. File System Exploration
+
+#### `show_directory_tree`
+Shows a tree of all directory paths starting from a given root.
+
+**Parameters:**
+```typescript
+{
+  rootPath?: string,     // Starting path (default: "/")
+  maxDepth?: number      // Maximum depth to traverse (default: 10)
+}
+```
+
+**Returns:**
+Tree-formatted text showing all directory paths with visual hierarchy.
+
+#### `show_file_tree`
+Shows a tree of all file paths starting from a given root.
+
+**Parameters:**
+```typescript
+{
+  rootPath?: string,     // Starting path (default: "/")
+  maxDepth?: number,     // Maximum depth to traverse (default: 10)
+  maxFiles?: number      // Maximum files to show (default: 500)
+}
+```
+
+**Returns:**
+Tree-formatted text showing all file paths with icons and directory structure.
 
 #### `list_directory`
-Lists files and folders in a specified directory.
+Lists files and folders in a specified directory (legacy - uses folder IDs).
 
 **Parameters:**
 ```typescript
@@ -58,13 +87,15 @@ Lists files and folders in a specified directory.
 }
 ```
 
+### 2. File Operations
+
 #### `read_file`
-Reads file content with optional pagination for large files.
+Reads file content using file path.
 
 **Parameters:**
 ```typescript
 {
-  fileId: string,
+  filePath: string,      // Full path like "/Documents/report.txt"
   maxSize?: number,      // max bytes to return (default: 1MB)
   startOffset?: number,  // for pagination
   endOffset?: number
@@ -83,7 +114,7 @@ Reads file content with optional pagination for large files.
 ```
 
 #### `search_files`
-Search for files across Google Drive.
+Search for files across Google Drive (legacy - uses folder IDs).
 
 **Parameters:**
 ```typescript
@@ -98,82 +129,74 @@ Search for files across Google Drive.
 
 **Returns:** Same format as `list_directory`
 
-### 2. Organization Operations
+### 3. Move Operations
 
-#### `create_folder`
-Creates a new folder.
-
-**Parameters:**
-```typescript
-{
-  name: string,
-  parentId: string,      // parent folder ID
-  parentPath: string     // human-readable parent path for logging
-}
-```
-
-**Returns:**
-```typescript
-{
-  folderId: string,
-  path: string          // full path of created folder
-}
-```
-
-### 3. Plan-Based Execution
-
-#### `bulk_move`
-Executes a pre-defined organization plan synchronously.
+#### `move_files`
+Moves or renames files and folders using simple from/to path operations.
 
 **Parameters:**
 ```typescript
 {
-  planName: string,           // "Consolidate scattered notes"
-  planDescription: string,    // "Moving 23 files from 4 folders into Documents/Notes/"
-  operations: Operation[]
+  operations: Array<{
+    from: string,        // Source path like "/Documents/old_file.txt"
+    to: string           // Destination path like "/Projects/new_file.txt"
+  }>
 }
+```
 
-interface Operation {
-  type: 'move_file' | 'move_folder' | 'create_folder' | 'rename_file' | 'rename_folder',
-  sourceId?: string,          // Google Drive file/folder ID (not needed for create_folder)
-  sourcePath: string,         // Human-readable current path
-  destinationParentId?: string, // Where it's moving to
-  destinationPath: string,    // Human-readable destination
-  newName?: string,           // For renames
-  reason: string             // "Groups tax documents by year"
-}
+**Examples:**
+```typescript
+// Move a file to different folder
+{ from: "/Documents/report.pdf", to: "/Projects/report.pdf" }
+
+// Rename a file (same folder)
+{ from: "/Documents/draft.txt", to: "/Documents/final.txt" }
+
+// Move and rename
+{ from: "/Downloads/temp.xlsx", to: "/Work/budget_2024.xlsx" }
+
+// Move a folder
+{ from: "/Old Projects", to: "/Archive/Old Projects" }
 ```
 
 **Returns:**
 ```typescript
 {
   success: boolean,
-  message: string,      // "Successfully executed plan: Consolidate scattered notes"
+  message: string,
   summary: {
     totalOperations: number,
     successfulOperations: number,
     failedOperations: number,
-    skippedOperations: number,
-    duration: string    // "45s"
+    duration: string
   },
-  failures?: Array<{
-    operation: Operation,
-    error: string
+  results: Array<{
+    operation: { from: string, to: string },
+    success: boolean,
+    error?: string
   }>
 }
 ```
 
 ## Data Structures
 
-### Operation Types
-- `move_file`: Move a file to a different folder
-- `move_folder`: Move an entire folder and its contents
-- `create_folder`: Create a new empty folder
-- `rename_file`: Rename a file (keeping same location)
-- `rename_folder`: Rename a folder (keeping same location)
+### Path Format
+All paths use Unix-style forward slashes starting from the Google Drive root:
+- Root: `/`
+- File: `/Documents/report.pdf`
+- Nested folder: `/Projects/2024/Budget/`
+- Folder in root: `/Archives`
 
-### File Paths
-Always provide human-readable paths like `/Documents/Work/Projects` alongside Google Drive IDs for better user experience and logging.
+### Move Operations
+Simple from/to path pairs that handle both moves and renames:
+- **Move**: Different parent directories (`/Downloads/file.txt` → `/Documents/file.txt`)
+- **Rename**: Same parent directory (`/Documents/draft.txt` → `/Documents/final.txt`)
+- **Move + Rename**: Different parent + different name (`/Downloads/temp.xlsx` → `/Work/budget.xlsx`)
+
+### File Discovery
+Tree tools provide comprehensive views:
+- `show_directory_tree`: All folder paths for navigation
+- `show_file_tree`: All file paths with visual icons and structure
 
 ## Implementation Details
 
@@ -219,12 +242,13 @@ Each line is a JSON object:
 
 ## Usage Workflow
 
-1. **Exploration Phase**: Claude uses `list_directory`, `search_files`, and `read_file` to understand the current file structure
-2. **Plan Generation**: Claude analyzes the structure and proposes an organization plan
-3. **User Review**: Plan is presented to user with clear summary of changes
-4. **Execution**: User approves, Claude calls `bulk_move` which executes all operations synchronously
-5. **Results Review**: Claude receives complete results including any failures
-6. **Continuation**: If operations failed or more work is needed, Claude can create a new plan
+1. **Discovery Phase**: Claude uses `show_directory_tree` and `show_file_tree` to understand the overall structure
+2. **Detailed Exploration**: Claude uses `read_file` to examine specific files if needed
+3. **Organization Planning**: Claude analyzes the structure and proposes move operations using human-readable paths
+4. **User Review**: Plan is presented to user with clear from/to paths that are easy to understand
+5. **Execution**: User approves, Claude calls `move_files` with the path-based operations
+6. **Results Review**: Claude receives complete results including any failures
+7. **Continuation**: If operations failed or more work is needed, Claude can create additional move operations
 
 ## Technical Requirements
 

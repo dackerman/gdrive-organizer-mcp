@@ -3,7 +3,7 @@ import { DriveService } from '../types/drive'
 
 // Define the schema for read_file parameters
 export const readFileSchema = z.object({
-  fileId: z.string().min(1),
+  filePath: z.string().min(1),
   maxSize: z.number().min(1).max(10485760).optional(), // Max 10MB
   startOffset: z.number().min(0).optional(),
   endOffset: z.number().min(0).optional()
@@ -19,7 +19,20 @@ export function createReadFileTool(driveService: DriveService) {
     console.log('[readFile tool] Called with params:', params)
     
     try {
-      const result = await driveService.readFile(params)
+      // Resolve path to file ID
+      const fileId = await driveService.resolvePathToId(params.filePath)
+      console.log('[readFile tool] Resolved path to ID:', { 
+        filePath: params.filePath, 
+        fileId 
+      })
+      
+      // Call the service with the resolved ID
+      const result = await driveService.readFile({
+        fileId,
+        maxSize: params.maxSize,
+        startOffset: params.startOffset,
+        endOffset: params.endOffset
+      })
       
       console.log('[readFile tool] Got result:', {
         mimeType: result.mimeType,
@@ -47,7 +60,7 @@ export function createReadFileTool(driveService: DriveService) {
   // Return the tool definition
   return {
     name: 'read_file',
-    description: 'Reads file content from Google Drive with optional pagination for large files',
+    description: 'Reads file content from Google Drive using file path with optional pagination for large files',
     schema: readFileSchema.shape,
     handler: readFile
   }

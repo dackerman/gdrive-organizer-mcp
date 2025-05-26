@@ -20,16 +20,24 @@ describe('readFile tool', () => {
     // Create tool with mocked service
     const tool = createReadFileTool(mockDriveService)
 
+    // Mock path resolution
+    vi.mocked(mockDriveService.resolvePathToId).mockResolvedValue('test-file-id')
+
     // Test the handler
     const result = await tool.handler({
-      fileId: 'test-file-id',
+      filePath: '/Documents/test.txt',
       maxSize: 1024
     })
 
-    // Verify service was called correctly
+    // Verify path resolution was called
+    expect(mockDriveService.resolvePathToId).toHaveBeenCalledWith('/Documents/test.txt')
+    
+    // Verify service was called correctly with resolved ID
     expect(mockDriveService.readFile).toHaveBeenCalledWith({
       fileId: 'test-file-id',
-      maxSize: 1024
+      maxSize: 1024,
+      startOffset: undefined,
+      endOffset: undefined
     })
 
     // Verify response format
@@ -55,16 +63,21 @@ describe('readFile tool', () => {
 
     const tool = createReadFileTool(mockDriveService)
 
+    // Mock path resolution
+    vi.mocked(mockDriveService.resolvePathToId).mockResolvedValue('test-file-id')
+
     await tool.handler({
-      fileId: 'test-file-id',
+      filePath: '/Documents/large-file.txt',
       startOffset: 100,
       endOffset: 200
     })
 
+    expect(mockDriveService.resolvePathToId).toHaveBeenCalledWith('/Documents/large-file.txt')
     expect(mockDriveService.readFile).toHaveBeenCalledWith({
       fileId: 'test-file-id',
       startOffset: 100,
-      endOffset: 200
+      endOffset: 200,
+      maxSize: undefined
     })
   })
 
@@ -82,12 +95,19 @@ describe('readFile tool', () => {
 
     const tool = createReadFileTool(mockDriveService)
 
+    // Mock path resolution
+    vi.mocked(mockDriveService.resolvePathToId).mockResolvedValue('binary-file-id')
+
     const result = await tool.handler({
-      fileId: 'binary-file-id'
+      filePath: '/Documents/report.pdf'
     })
 
+    expect(mockDriveService.resolvePathToId).toHaveBeenCalledWith('/Documents/report.pdf')
     expect(mockDriveService.readFile).toHaveBeenCalledWith({
-      fileId: 'binary-file-id'
+      fileId: 'binary-file-id',
+      maxSize: undefined,
+      startOffset: undefined,
+      endOffset: undefined
     })
 
     const parsed = JSON.parse(result.content[0].text)
@@ -97,12 +117,12 @@ describe('readFile tool', () => {
 
   it('should handle errors', async () => {
     const mockDriveService = createMockDriveService()
-    vi.mocked(mockDriveService.readFile).mockRejectedValue(new Error('File not found'))
+    vi.mocked(mockDriveService.resolvePathToId).mockRejectedValue(new Error('File not found'))
 
     const tool = createReadFileTool(mockDriveService)
 
     await expect(tool.handler({
-      fileId: 'non-existent-file'
+      filePath: '/nonexistent/file.txt'
     })).rejects.toThrow('File not found')
   })
 
@@ -112,7 +132,7 @@ describe('readFile tool', () => {
     const tool = createReadFileTool(mockDriveService)
 
     expect(tool.name).toBe('read_file')
-    expect(tool.description).toBe('Reads file content from Google Drive with optional pagination for large files')
+    expect(tool.description).toBe('Reads file content from Google Drive using file path with optional pagination for large files')
     expect(tool.schema).toBeDefined()
   })
 })
