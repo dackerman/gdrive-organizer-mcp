@@ -1,5 +1,15 @@
 import { DriveService, DriveFile, ListDirectoryResult, ReadFileResult, SearchFilesResult } from '../types/drive'
 
+// Add type definitions for environment variables
+interface ImportMetaEnv {
+  GOOGLE_CLIENT_ID: string
+  GOOGLE_CLIENT_SECRET: string
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
+
 const GOOGLE_DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3'
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 
@@ -7,17 +17,91 @@ export class GoogleDriveService implements DriveService {
   // Path resolution cache to avoid repeated API calls
   private pathToIdCache = new Map<string, string>()
   private idToPathCache = new Map<string, string>()
+  private refreshToken: string
+  private clientId: string
+  private clientSecret: string
   
-  constructor(private accessToken: string) {
+  constructor(
+    private accessToken: string, 
+    refreshToken?: string,
+    clientId?: string,
+    clientSecret?: string
+  ) {
     // Log token info (first and last few chars only for security)
-    const tokenPreview = accessToken.length > 10 
+    const tokenPreview = accessToken && accessToken.length > 10 
       ? `${accessToken.substring(0, 4)}...${accessToken.substring(accessToken.length - 4)}`
       : '[token too short]'
     console.log('[GoogleDriveService] Initialized with token:', tokenPreview)
     
+    this.refreshToken = refreshToken || ''
+    this.clientId = clientId || ''
+    this.clientSecret = clientSecret || ''
+    
     // Initialize root path
     this.pathToIdCache.set('/', 'root')
     this.idToPathCache.set('root', '/')
+  }
+
+  private async refreshAccessToken(): Promise<void> {
+    console.log('[GoogleDriveService] Refreshing access token...')
+    
+    // Check if we have the necessary credentials to refresh
+    if (!this.refreshToken || !this.clientId || !this.clientSecret) {
+      throw new Error('Cannot refresh token: missing refresh token or client credentials. In production, tokens should be managed by the OAuth provider.')
+    }
+    
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        client_id: this.clientId,
+        client_secret: this.clientSecret,
+        refresh_token: this.refreshToken,
+        grant_type: 'refresh_token'
+      })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to refresh token: ${response.status} ${errorText}`)
+    }
+
+    const data = await response.json() as { access_token: string }
+    this.accessToken = data.access_token
+    console.log('[GoogleDriveService] Access token refreshed successfully')
+  }
+
+  private async makeRequest(url: string, options: RequestInit = {}): Promise<Response> {
+    // If access token is empty or missing, refresh it first
+    if (!this.accessToken || this.accessToken.trim() === '') {
+      console.log('[GoogleDriveService] Access token is empty, refreshing...')
+      await this.refreshAccessToken()
+    }
+
+    const makeRequestWithToken = async (token: string) => {
+      return fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      })
+    }
+
+    // Try with current token
+    let response = await makeRequestWithToken(this.accessToken)
+
+    // If unauthorized or forbidden (in case of expired token), try refreshing token and retry once
+    if (response.status === 401 || response.status === 403) {
+      console.log(`[GoogleDriveService] Got ${response.status} response, attempting token refresh...`)
+      await this.refreshAccessToken()
+      response = await makeRequestWithToken(this.accessToken)
+    }
+
+    return response
   }
 
   // Path resolution methods
@@ -226,12 +310,7 @@ export class GoogleDriveService implements DriveService {
   
   private async buildPathFromId(fileId: string): Promise<string> {
     const url = `${GOOGLE_DRIVE_API_BASE}/files/${fileId}?fields=id,name,parents`
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
-        'Accept': 'application/json'
-      }
-    })
+    const response = await this.makeRequest(url)
     
     if (!response.ok) {
       throw new Error(`Failed to get file metadata: ${response.status}`)
@@ -284,17 +363,7 @@ export class GoogleDriveService implements DriveService {
     console.log('[GoogleDriveService] Request URL:', url.toString())
     console.log('[GoogleDriveService] Query:', query)
 
-    const headers = {
-      'Authorization': `Bearer ${this.accessToken}`,
-      'Accept': 'application/json'
-    }
-
-    console.log('[GoogleDriveService] Request headers:', {
-      ...headers,
-      'Authorization': `Bearer ${this.accessToken.substring(0, 4)}...${this.accessToken.substring(this.accessToken.length - 4)}`
-    })
-
-    const response = await fetch(url.toString(), { headers })
+    const response = await this.makeRequest(url.toString())
 
     console.log('[GoogleDriveService] Response status:', response.status, response.statusText)
     console.log('[GoogleDriveService] Response headers:', Object.fromEntries(response.headers.entries()))
@@ -461,12 +530,7 @@ export class GoogleDriveService implements DriveService {
     const metadataUrl = `${GOOGLE_DRIVE_API_BASE}/files/${fileId}?fields=id,name,mimeType,size`
     console.log('[GoogleDriveService] Fetching file metadata:', metadataUrl)
 
-    const metadataResponse = await fetch(metadataUrl, {
-      headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
-        'Accept': 'application/json'
-      }
-    })
+    const metadataResponse = await this.makeRequest(metadataUrl)
 
     if (!metadataResponse.ok) {
       const errorText = await metadataResponse.text()
@@ -500,9 +564,8 @@ export class GoogleDriveService implements DriveService {
     
     console.log('[GoogleDriveService] Downloading file content with range:', rangeHeader)
 
-    const contentResponse = await fetch(downloadUrl, {
+    const contentResponse = await this.makeRequest(downloadUrl, {
       headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
         'Range': rangeHeader
       }
     })
@@ -569,9 +632,8 @@ export class GoogleDriveService implements DriveService {
 
     console.log('[GoogleDriveService] Exporting Google Doc as:', exportMimeType)
 
-    const response = await fetch(exportUrl, {
+    const response = await this.makeRequest(exportUrl, {
       headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
         'Accept': exportMimeType
       }
     })
@@ -643,12 +705,7 @@ export class GoogleDriveService implements DriveService {
     url.searchParams.append('fields', 'files(id,name,mimeType,size,createdTime,modifiedTime,parents,shared,sharingUser,permissions)')
     url.searchParams.append('orderBy', 'modifiedTime desc')
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
-        'Accept': 'application/json'
-      }
-    })
+    const response = await this.makeRequest(url.toString())
 
     if (!response.ok) {
       const errorText = await response.text()
@@ -722,12 +779,7 @@ export class GoogleDriveService implements DriveService {
 
     // First get current parents
     const metadataUrl = `${GOOGLE_DRIVE_API_BASE}/files/${fileId}?fields=parents`
-    const metadataResponse = await fetch(metadataUrl, {
-      headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
-        'Accept': 'application/json'
-      }
-    })
+    const metadataResponse = await this.makeRequest(metadataUrl)
 
     if (!metadataResponse.ok) {
       const errorText = await metadataResponse.text()
@@ -735,20 +787,26 @@ export class GoogleDriveService implements DriveService {
     }
 
     const metadata = await metadataResponse.json() as { parents?: string[] }
-    const currentParents = metadata.parents?.join(',') || ''
+    const currentParents = metadata.parents || []
+
+    // If file is already in the target folder, no need to move it
+    if (currentParents.includes(newParentId)) {
+      console.log('[GoogleDriveService] File is already in target folder')
+      return
+    }
 
     // Update file with new parent
-    const updateUrl = `${GOOGLE_DRIVE_API_BASE}/files/${fileId}`
-    const updateResponse = await fetch(updateUrl, {
+    // Note: addParents and removeParents must be query parameters, not in the body
+    const updateUrl = new URL(`${GOOGLE_DRIVE_API_BASE}/files/${fileId}`)
+    updateUrl.searchParams.append('addParents', newParentId)
+    updateUrl.searchParams.append('removeParents', currentParents.join(','))
+    
+    const updateResponse = await this.makeRequest(updateUrl.toString(), {
       method: 'PATCH',
       headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        addParents: newParentId,
-        removeParents: currentParents
-      })
+      body: JSON.stringify({})  // Empty body for metadata-only update
     })
 
     if (!updateResponse.ok) {
@@ -756,22 +814,92 @@ export class GoogleDriveService implements DriveService {
       throw new Error(`Failed to move file: ${updateResponse.status} ${errorText}`)
     }
 
+    // Verify the move was successful
+    const verifyUrl = `${GOOGLE_DRIVE_API_BASE}/files/${fileId}?fields=parents`
+    const verifyResponse = await this.makeRequest(verifyUrl)
+
+    if (!verifyResponse.ok) {
+      const errorText = await verifyResponse.text()
+      console.error('[GoogleDriveService] Failed to verify file move:', verifyResponse.status, errorText)
+      throw new Error(`Failed to verify file move: ${verifyResponse.status} ${verifyResponse.statusText}`)
+    }
+
+    const verifyData = await verifyResponse.json() as { parents: string[] }
+    if (!verifyData.parents.includes(newParentId)) {
+      throw new Error('File move verification failed - file is not in the expected parent')
+    }
+
     console.log('[GoogleDriveService] File moved successfully')
   }
 
   async moveFolder(folderId: string, newParentId: string): Promise<void> {
-    // Moving a folder is the same as moving a file in Google Drive
-    return this.moveFile(folderId, newParentId)
+    // First verify the folder exists and is actually a folder
+    const metadataUrl = `${GOOGLE_DRIVE_API_BASE}/files/${folderId}?fields=id,name,mimeType,parents`
+    const metadataResponse = await this.makeRequest(metadataUrl)
+
+    if (!metadataResponse.ok) {
+      const errorText = await metadataResponse.text()
+      console.error('[GoogleDriveService] Failed to get folder metadata:', metadataResponse.status, errorText)
+      throw new Error(`Failed to get folder metadata: ${metadataResponse.status} ${metadataResponse.statusText}`)
+    }
+
+    const metadata = await metadataResponse.json() as {
+      id: string
+      name: string
+      mimeType: string
+      parents?: string[]
+    }
+
+    if (metadata.mimeType !== FOLDER_MIME_TYPE) {
+      throw new Error(`Item with ID ${folderId} is not a folder`)
+    }
+
+    // Verify the new parent exists and is a folder
+    const parentMetadataUrl = `${GOOGLE_DRIVE_API_BASE}/files/${newParentId}?fields=id,name,mimeType`
+    const parentMetadataResponse = await this.makeRequest(parentMetadataUrl)
+
+    if (!parentMetadataResponse.ok) {
+      const errorText = await parentMetadataResponse.text()
+      console.error('[GoogleDriveService] Failed to get parent folder metadata:', parentMetadataResponse.status, errorText)
+      throw new Error(`Failed to get parent folder metadata: ${parentMetadataResponse.status} ${parentMetadataResponse.statusText}`)
+    }
+
+    const parentMetadata = await parentMetadataResponse.json() as {
+      id: string
+      name: string
+      mimeType: string
+    }
+
+    if (parentMetadata.mimeType !== FOLDER_MIME_TYPE) {
+      throw new Error(`Target parent with ID ${newParentId} is not a folder`)
+    }
+
+    // Now move the folder
+    await this.moveFile(folderId, newParentId)
+
+    // Verify the move was successful
+    const verifyUrl = `${GOOGLE_DRIVE_API_BASE}/files/${folderId}?fields=parents`
+    const verifyResponse = await this.makeRequest(verifyUrl)
+
+    if (!verifyResponse.ok) {
+      const errorText = await verifyResponse.text()
+      console.error('[GoogleDriveService] Failed to verify folder move:', verifyResponse.status, errorText)
+      throw new Error(`Failed to verify folder move: ${verifyResponse.status} ${verifyResponse.statusText}`)
+    }
+
+    const verifyData = await verifyResponse.json() as { parents: string[] }
+    if (!verifyData.parents.includes(newParentId)) {
+      throw new Error('Folder move verification failed - folder is not in the expected parent')
+    }
   }
 
   async createFolder(name: string, parentId: string): Promise<{ id: string }> {
     console.log('[GoogleDriveService] createFolder called:', { name, parentId })
 
     const url = `${GOOGLE_DRIVE_API_BASE}/files`
-    const response = await fetch(url, {
+    const response = await this.makeRequest(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -796,10 +924,9 @@ export class GoogleDriveService implements DriveService {
     console.log('[GoogleDriveService] renameFile called:', { fileId, newName })
 
     const url = `${GOOGLE_DRIVE_API_BASE}/files/${fileId}`
-    const response = await fetch(url, {
+    const response = await this.makeRequest(url, {
       method: 'PATCH',
       headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ name: newName })

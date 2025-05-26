@@ -18,14 +18,17 @@ describe('GoogleDriveService - Practical Integration Tests', () => {
 
   beforeAll(async () => {
     const credentials = getTestCredentials()
-    service = new GoogleDriveService(credentials.access_token)
+    service = new GoogleDriveService(
+      '', // We'll get a fresh access token via refresh
+      credentials.refresh_token,
+      credentials.client_id,
+      credentials.client_secret
+    )
     
     // Get test folder ID from credentials or environment
-    testFolderId = (credentials as any).test_folder_id
+    testFolderId = credentials.test_folder_id
     if (!testFolderId) {
-      console.error('❌ test_folder_id not found in test-credentials.json')
-      console.error('   Please add the GDrive-Test-Suite folder ID to your credentials')
-      throw new Error('Test folder ID not configured')
+      throw new Error('Test folder ID not found in credentials')
     }
     
     console.log('📁 Using test folder:', testFolderId)
@@ -306,11 +309,16 @@ describe('GoogleDriveService - Practical Integration Tests', () => {
     })
 
     it('should handle unauthorized access', async () => {
-      const badService = new GoogleDriveService('invalid-token')
+      const badService = new GoogleDriveService(
+        'invalid-token',
+        'invalid-refresh-token',
+        'invalid-client-id',
+        'invalid-client-secret'
+      )
       
       await expect(
         badService.listDirectory({ folderId: 'root' })
-      ).rejects.toThrow(/401|Invalid Credentials|Unauthorized/i)
+      ).rejects.toThrow(/401|Invalid Credentials|Unauthorized|Failed to refresh token/i)
     })
   })
 })

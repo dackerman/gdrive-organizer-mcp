@@ -29,15 +29,18 @@ Use a dedicated test account, not your personal Google account. The tests will m
 
 Follow the instructions in `TEST_FOLDER_SETUP.md` to create the required folder structure in your test Google Drive.
 
-### 3. Obtain an Access Token
+### 3. Obtain OAuth Credentials
 
-Follow the instructions in `scripts/setup-test-token-manual.md` to get an OAuth token.
+Follow the instructions in `scripts/setup-test-token-manual.md` to get OAuth credentials.
 
 Quick version:
 1. Go to https://developers.google.com/oauthplayground/
-2. Select Drive scopes (full access + file access)
-3. Authorize with your test account
-4. Copy the access token
+2. Click the gear icon (⚙️) and check "Use your own OAuth credentials"
+3. Enter your OAuth client ID and secret
+4. Select Drive scopes (full access + file access)
+5. Authorize with your test account
+6. Exchange the code for tokens
+7. Copy both the access token and refresh token
 
 ### 4. Create test-credentials.json
 
@@ -46,6 +49,9 @@ Create this file in the project root (see `test-credentials.json.example`):
 ```json
 {
   "access_token": "ya29.a0AfH6SMB...",
+  "refresh_token": "1//04dX...",
+  "client_id": "your-client-id.apps.googleusercontent.com",
+  "client_secret": "your-client-secret",
   "token_type": "Bearer", 
   "user_email": "your-test@gmail.com",
   "generated_at": "2025-01-25T10:00:00Z",
@@ -102,8 +108,7 @@ The practical tests are designed to minimize cleanup needs:
 
 1. **No file creation**: We can't test file operations (move, rename) because we can't create test files
 2. **No delete operations**: Can't automatically clean up test data
-3. **Token expiry**: OAuth Playground tokens expire after 1 hour
-4. **Rate limits**: Tests run sequentially to avoid hitting API rate limits
+3. **Rate limits**: Tests run sequentially to avoid hitting API rate limits
 
 ## Adding New Tests
 
@@ -123,8 +128,9 @@ For CI/CD, consider:
 ## Troubleshooting
 
 ### "Invalid Credentials" Error
-- Token has expired (they last ~1 hour)
-- Regenerate token following setup instructions
+- Check that your OAuth client ID and secret are correct
+- Verify the refresh token is valid
+- Try regenerating tokens if needed
 
 ### "Not Found" Errors  
 - Check the test account has access to the resources

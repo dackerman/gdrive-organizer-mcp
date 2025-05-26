@@ -23,7 +23,12 @@ describe('GoogleDriveService File Operations', () => {
 
   beforeAll(async () => {
     const credentials = getTestCredentials()
-    service = new GoogleDriveService(credentials.access_token)
+    service = new GoogleDriveService(
+      '', // We'll get a fresh access token via refresh
+      credentials.refresh_token,
+      credentials.client_id,
+      credentials.client_secret
+    )
     cleanup = new TestCleanupManager(service)
     
     // Create test root folder

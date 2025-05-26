@@ -45,15 +45,15 @@ async function getTokenInfo(accessToken) {
 
 async function main() {
   console.log('🔐 Google Drive Test Credentials Helper\n');
-  console.log('This script will help you obtain an access token for integration testing.\n');
+  console.log('This script will help you obtain tokens for integration testing.\n');
   
   console.log('Step 1: Open Google OAuth 2.0 Playground');
   console.log('   URL: https://developers.google.com/oauthplayground/\n');
   
   console.log('Step 2: Configure OAuth Playground');
   console.log('   1. Click the gear icon (⚙️) in the top right');
-  console.log('   2. Check "Use your own OAuth credentials" (optional, for longer-lived tokens)');
-  console.log('   3. If using own credentials, enter your Client ID and Client Secret\n');
+  console.log('   2. Check "Use your own OAuth credentials"');
+  console.log('   3. Enter your Client ID and Client Secret\n');
   
   console.log('Step 3: Select Scopes');
   console.log('   In the left panel, expand "Google Drive API v3" and select:');
@@ -71,15 +71,18 @@ async function main() {
   console.log('Step 5: Exchange Authorization Code');
   console.log('   Click "Exchange authorization code for tokens"\n');
   
-  console.log('Step 6: Copy Access Token');
-  console.log('   Copy the access_token from the response\n');
+  console.log('Step 6: Copy Tokens');
+  console.log('   Copy both the access_token and refresh_token from the response\n');
   
   await prompt('Press Enter when you have completed the above steps...');
   
   const accessToken = await prompt('\nPaste your access token here: ');
+  const refreshToken = await prompt('\nPaste your refresh token here: ');
+  const clientId = await prompt('\nPaste your client ID here: ');
+  const clientSecret = await prompt('\nPaste your client secret here: ');
   
-  if (!accessToken || accessToken.length < 20) {
-    console.error('\n❌ Invalid access token. Please try again.');
+  if (!accessToken || accessToken.length < 20 || !refreshToken || refreshToken.length < 20) {
+    console.error('\n❌ Invalid tokens. Please try again.');
     process.exit(1);
   }
   
@@ -102,6 +105,9 @@ async function main() {
     
     const credentials = {
       access_token: accessToken.trim(),
+      refresh_token: refreshToken.trim(),
+      client_id: clientId.trim(),
+      client_secret: clientSecret.trim(),
       token_type: "Bearer",
       user_email: tokenInfo.email,
       generated_at: new Date().toISOString(),

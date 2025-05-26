@@ -1,13 +1,14 @@
 import { beforeAll } from 'vitest'
-import * as fs from 'fs'
-import * as path from 'path'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+import { readFileSync } from 'fs'
 
 export interface TestCredentials {
-  access_token: string
-  token_type: string
+  refresh_token: string
+  client_id: string
+  client_secret: string
   user_email: string
-  generated_at: string
-  scopes: string[]
+  test_folder_id: string
 }
 
 // Use module augmentation to add properties to globalThis
@@ -24,24 +25,15 @@ let testFolderId: string | undefined
 
 beforeAll(async () => {
   // Load test credentials
-  const credentialsPath = path.join(process.cwd(), 'test-credentials.json')
+  const __filename = fileURLToPath(import.meta.url)
+  const __dirname = dirname(__filename)
+  const credentialsPath = join(__dirname, '../../test-credentials.json')
   
   try {
-    const credentialsContent = fs.readFileSync(credentialsPath, 'utf8')
-    testCredentials = JSON.parse(credentialsContent)
+    const credentialsContent = readFileSync(credentialsPath, 'utf8')
+    testCredentials = JSON.parse(credentialsContent) as TestCredentials
     
     console.log('✅ Test credentials loaded for:', testCredentials.user_email)
-    console.log('⚠️  Token generated at:', testCredentials.generated_at)
-    
-    // Warn if token might be expired (tokens usually last 1 hour)
-    const generatedAt = new Date(testCredentials.generated_at)
-    const now = new Date()
-    const hoursSinceGenerated = (now.getTime() - generatedAt.getTime()) / (1000 * 60 * 60)
-    
-    if (hoursSinceGenerated > 1) {
-      console.warn('⚠️  WARNING: Token is more than 1 hour old and may be expired!')
-      console.warn('   Please regenerate the token using the instructions in scripts/setup-test-token-manual.md')
-    }
   } catch (error) {
     console.error('❌ Failed to load test credentials from:', credentialsPath)
     console.error('   Please follow the instructions in scripts/setup-test-token-manual.md')

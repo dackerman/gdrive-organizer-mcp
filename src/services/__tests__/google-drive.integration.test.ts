@@ -8,9 +8,14 @@ describe('GoogleDriveService Integration Tests', () => {
   let testFileId: string
   const testFolderName = `test-gdrive-organizer-${Date.now()}`
 
-  beforeAll(() => {
+  beforeAll(async () => {
     const credentials = getTestCredentials()
-    service = new GoogleDriveService(credentials.access_token)
+    service = new GoogleDriveService(
+      '', // We'll get a fresh access token via refresh
+      credentials.refresh_token,
+      credentials.client_id,
+      credentials.client_secret
+    )
   })
 
   afterAll(async () => {
@@ -198,11 +203,16 @@ describe('GoogleDriveService Integration Tests', () => {
 
   describe('error handling', () => {
     it('should handle invalid access token', async () => {
-      const invalidService = new GoogleDriveService('invalid-token-123')
+      const invalidService = new GoogleDriveService(
+        'invalid-token-123',
+        'invalid-refresh-token',
+        'invalid-client-id', 
+        'invalid-client-secret'
+      )
       
       await expect(
         invalidService.listDirectory({ folderId: 'root' })
-      ).rejects.toThrow(/401|Invalid Credentials|Unauthorized/i)
+      ).rejects.toThrow(/401|Invalid Credentials|Unauthorized|Failed to refresh token/i)
     })
 
     it('should handle API errors gracefully', async () => {

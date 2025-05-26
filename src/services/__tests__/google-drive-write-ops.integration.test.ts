@@ -17,12 +17,16 @@ describe('GoogleDriveService Write Operations', () => {
 
   beforeAll(async () => {
     const credentials = getTestCredentials()
-    service = new GoogleDriveService(credentials.access_token)
+    service = new GoogleDriveService(
+      '', // We'll get a fresh access token via refresh
+      credentials.refresh_token,
+      credentials.client_id,
+      credentials.client_secret
+    )
     
     // Create a root test folder for all our operations
-    console.log(`📁 Creating test root folder: ${testRootFolderName}`)
-    const result = await service.createFolder(testRootFolderName, 'root')
-    testRootFolderId = result.id
+    const rootFolder = await service.createFolder(testRootFolderName, 'root')
+    testRootFolderId = rootFolder.id
     createdResources.push({ id: testRootFolderId, name: testRootFolderName, type: 'folder' })
     
     console.log(`✅ Test root folder created: ${testRootFolderId}`)
