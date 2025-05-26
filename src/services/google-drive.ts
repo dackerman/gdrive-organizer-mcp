@@ -123,28 +123,29 @@ export class GoogleDriveService implements DriveService {
       
       await Promise.all(
         batch.map(async ({ id, path, depth }) => {
-          if (depth >= maxDepth) return
-          
           directories.push(path)
           
-          try {
-            const contents = await this.listDirectory({ folderId: id, maxResults: 100 })
-            
-            for (const item of contents.files) {
-              if (item.isFolder) {
-                const childPath = path === '/' ? '/' + item.name : path + '/' + item.name
-                
-                // Cache the path
-                this.pathToIdCache.set(childPath, item.id)
-                this.idToPathCache.set(item.id, childPath)
-                
-                // Add to queue for next iteration
-                queue.push({ id: item.id, path: childPath, depth: depth + 1 })
+          // Only traverse children if we haven't reached maxDepth
+          if (depth < maxDepth) {
+            try {
+              const contents = await this.listDirectory({ folderId: id, maxResults: 100 })
+              
+              for (const item of contents.files) {
+                if (item.isFolder) {
+                  const childPath = path === '/' ? '/' + item.name : path + '/' + item.name
+                  
+                  // Cache the path
+                  this.pathToIdCache.set(childPath, item.id)
+                  this.idToPathCache.set(item.id, childPath)
+                  
+                  // Add to queue for next iteration
+                  queue.push({ id: item.id, path: childPath, depth: depth + 1 })
+                }
               }
+            } catch (error) {
+              console.error(`[GoogleDriveService] Error processing folder ${path}:`, error)
+              // Continue with other folders even if one fails
             }
-          } catch (error) {
-            console.error(`[GoogleDriveService] Error processing folder ${path}:`, error)
-            // Continue with other folders even if one fails
           }
         })
       )
