@@ -163,7 +163,7 @@ describe('GoogleDriveService Integration Tests', () => {
     // Note: We can't create files directly with the current API,
     // so these tests assume files exist or skip actual file operations
 
-    it.skip('should rename a folder', async () => {
+    it('should rename a folder', async () => {
       // Create a folder to rename
       const folderToRename = await service.createFolder('folder-to-rename', testFolderId)
       
@@ -179,7 +179,7 @@ describe('GoogleDriveService Integration Tests', () => {
       expect(renamedFolder?.name).toBe(newName)
     })
 
-    it.skip('should move a folder', async () => {
+    it('should move a folder', async () => {
       // Create source and destination folders
       const sourceFolder = await service.createFolder('move-source', testFolderId)
       const destFolder = await service.createFolder('move-destination', testFolderId)

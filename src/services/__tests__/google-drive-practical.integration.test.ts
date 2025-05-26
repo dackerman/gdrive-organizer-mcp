@@ -272,7 +272,7 @@ describe('GoogleDriveService - Practical Integration Tests', () => {
   })
 
   describe('Create Operations', () => {
-    it.skip('should create a new folder', async () => {
+    it('should create a new folder', async () => {
       const timestamp = Date.now()
       const folderName = `test-create-${timestamp}`
       
@@ -281,8 +281,15 @@ describe('GoogleDriveService - Practical Integration Tests', () => {
       expect(result).toBeDefined()
       expect(result.id).toBeTruthy()
       
-      // Verify it exists
-      const files = await service.listDirectory({ folderId: testOperationsFolderId })
+      // Wait a bit for propagation
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Verify it exists - need to increase page size due to many test folders
+      const files = await service.listDirectory({ 
+        folderId: testOperationsFolderId,
+        pageSize: 100  // Increase to see all files
+      })
+      
       const createdFolder = files.files.find(f => f.name === folderName)
       
       expect(createdFolder).toBeDefined()
