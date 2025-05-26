@@ -58,13 +58,31 @@ describe('searchFiles tool', () => {
     })
 
     // Verify response format
-    expect(result).toEqual({
-      content: [
+    const parsedContent = JSON.parse(result.content[0].text)
+    expect(parsedContent).toEqual({
+      files: [
         {
-          type: 'text',
-          text: JSON.stringify(mockResult, null, 2)
+          id: '123',
+          name: 'report.pdf',
+          path: '/report.pdf',
+          mimeType: 'application/pdf',
+          size: 2048,
+          modifiedTime: '2025-01-15T11:00:00Z',
+          isFolder: false,
+          isShared: false
+        },
+        {
+          id: '456',
+          name: 'presentation.pptx',
+          path: '/Documents/presentation.pptx',
+          mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          size: 5120,
+          modifiedTime: '2025-01-12T10:00:00Z',
+          isFolder: false,
+          isShared: true
         }
-      ]
+      ],
+      totalResults: 2
     })
   })
 
@@ -122,7 +140,7 @@ describe('searchFiles tool', () => {
     const tool = createSearchFilesTool(mockDriveService)
 
     expect(tool.name).toBe('search_files')
-    expect(tool.description).toBe('Search for files across Google Drive by name, content, type, or location')
+    expect(tool.description).toContain('Search for files across your entire Google Drive')
     expect(tool.schema).toBeDefined()
   })
 })

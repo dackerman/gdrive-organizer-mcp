@@ -132,7 +132,7 @@ describe('readFile tool', () => {
     const tool = createReadFileTool(mockDriveService)
 
     expect(tool.name).toBe('read_file')
-    expect(tool.description).toBe('Reads file content from Google Drive using file path with optional pagination for large files')
+    expect(tool.description).toContain('Reads the content of a file from Google Drive')
     expect(tool.schema).toBeDefined()
   })
 })

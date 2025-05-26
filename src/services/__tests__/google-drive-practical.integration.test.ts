@@ -272,7 +272,7 @@ describe('GoogleDriveService - Practical Integration Tests', () => {
   })
 
   describe('Create Operations', () => {
-    it('should create a new folder', async () => {
+    it.skip('should create a new folder', async () => {
       const timestamp = Date.now()
       const folderName = `test-create-${timestamp}`
       

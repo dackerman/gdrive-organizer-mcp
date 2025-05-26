@@ -3,13 +3,27 @@ import { DriveService } from '../types/drive'
 
 // Define the schema for individual move operations
 export const moveOperationSchema = z.object({
-  from: z.string().min(1),
-  to: z.string().min(1)
+  from: z.string().min(1).describe(
+    'Source path of the file or folder to move/rename. ' +
+    'Must be an absolute path starting with "/" (e.g., "/Documents/old-name.txt"). ' +
+    'The path is case-sensitive and must match exactly.'
+  ),
+  to: z.string().min(1).describe(
+    'Destination path for the file or folder. ' +
+    'Must be an absolute path starting with "/" (e.g., "/Archive/new-name.txt"). ' +
+    'If moving to a different folder, the destination folder must exist. ' +
+    'If renaming (same parent folder), only the filename changes.'
+  )
 })
 
 // Define the schema for move_files parameters
 export const moveFilesSchema = z.object({
-  operations: z.array(moveOperationSchema).min(1)
+  operations: z.array(moveOperationSchema).min(1).describe(
+    'Array of move/rename operations to perform. ' +
+    'Each operation moves or renames a single file or folder. ' +
+    'Operations are processed sequentially in the order provided. ' +
+    'If any operation fails, subsequent operations will still be attempted.'
+  )
 })
 
 // Type inference from schemas
@@ -153,7 +167,19 @@ export function createMoveFilesTool(driveService: DriveService) {
   // Return the tool definition
   return {
     name: 'move_files',
-    description: 'Moves or renames files and folders using path-based operations. Each operation specifies a from and to path.',
+    description: 
+      'Moves or renames files and folders in Google Drive. ' +
+      'Supports batch operations for moving multiple items at once. ' +
+      'Can move items between folders, rename them, or both in a single operation. ' +
+      '\n\nOperation types:\n' +
+      '- Move: Change parent folder (e.g., "/docs/file.txt" → "/archive/file.txt")\n' +
+      '- Rename: Change name in same folder (e.g., "/docs/old.txt" → "/docs/new.txt")\n' +
+      '- Move + Rename: Both (e.g., "/docs/old.txt" → "/archive/new.txt")\n' +
+      '\nImportant notes:\n' +
+      '- Destination folders must exist before moving items into them\n' +
+      '- Cannot move items to Trash (use Google Drive UI for that)\n' +
+      '- Moving shared items may affect sharing permissions\n' +
+      '- Operations are atomic per item (each succeeds or fails independently)',
     schema: moveFilesSchema.shape,
     handler: moveFiles
   }

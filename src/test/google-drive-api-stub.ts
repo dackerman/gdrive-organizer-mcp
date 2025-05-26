@@ -395,27 +395,28 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
    * Apply field mask to limit returned fields
    */
   private applyFieldMask(files: GoogleDriveFile[], fields: string): GoogleDriveFile[] {
-    // Parse fields parameter (simplified version)
-    const requestedFields = new Set<string>()
-    
-    // Extract field names from the fields string
-    const fieldRegex = /(\w+)(?:\([^)]*\))?/g
-    let match
-    while ((match = fieldRegex.exec(fields))) {
-      requestedFields.add(match[1])
+    // Parse fields parameter - handle nested fields syntax like files(id,name,mimeType)
+    if (fields.includes('files(')) {
+      // Extract fields within files(...) parentheses
+      const filesMatch = fields.match(/files\(([^)]+)\)/)
+      if (filesMatch) {
+        const innerFields = filesMatch[1].split(',').map(f => f.trim())
+        const requestedFields = new Set(innerFields)
+        requestedFields.add('id') // Always include id
+        
+        return files.map(file => {
+          const filtered: any = {}
+          for (const field of requestedFields) {
+            if (field in file) {
+              filtered[field] = file[field as keyof GoogleDriveFile]
+            }
+          }
+          return filtered as GoogleDriveFile
+        })
+      }
     }
     
-    // Always include id
-    requestedFields.add('id')
-    
-    return files.map(file => {
-      const filtered: any = {}
-      for (const field of requestedFields) {
-        if (field in file) {
-          filtered[field] = file[field as keyof GoogleDriveFile]
-        }
-      }
-      return filtered as GoogleDriveFile
-    })
+    // If no specific field mask or not in expected format, return all fields
+    return files
   }
 }

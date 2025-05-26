@@ -185,6 +185,7 @@ export class GoogleDriveAdapter implements DriveService {
   async listDirectory(params: {
     folderPath?: string
     folderId?: string
+    query?: string
     includeShared?: boolean
     onlyDirectories?: boolean
     pageSize?: number
@@ -193,6 +194,7 @@ export class GoogleDriveAdapter implements DriveService {
     const {
       folderPath,
       folderId,
+      query: userQuery,
       includeShared = true,
       onlyDirectories = false,
       pageSize = 20,
@@ -206,11 +208,30 @@ export class GoogleDriveAdapter implements DriveService {
     }
 
     // Build query
-    let query = `'${targetFolderId}' in parents and trashed = false`
-    if (!includeShared) {
+    let query = ''
+    
+    // If user provided a custom query, use it as the base
+    if (userQuery) {
+      query = userQuery
+      // Add folder constraint if not already present
+      if (!userQuery.includes('in parents')) {
+        query = `'${targetFolderId}' in parents and (${query})`
+      }
+    } else {
+      // Default query
+      query = `'${targetFolderId}' in parents`
+    }
+    
+    // Always exclude trashed files unless explicitly included
+    if (!query.includes('trashed')) {
+      query += ' and trashed = false'
+    }
+    
+    // Apply additional filters
+    if (!includeShared && !query.includes('sharedWithMe')) {
       query += ' and sharedWithMe = false'
     }
-    if (onlyDirectories) {
+    if (onlyDirectories && !query.includes('mimeType')) {
       query += ` and mimeType = '${GOOGLE_DRIVE_MIME_TYPES.FOLDER}'`
     }
 

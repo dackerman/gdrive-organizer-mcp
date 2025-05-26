@@ -35,6 +35,7 @@ export interface DriveService {
   listDirectory(params: {
     folderPath?: string
     folderId?: string
+    query?: string
     includeShared?: boolean
     onlyDirectories?: boolean
     pageSize?: number

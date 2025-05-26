@@ -40,7 +40,10 @@ describe('listDirectory tool', () => {
     // Verify the response structure
     expect(content).toHaveProperty('files')
     expect(content).toHaveProperty('hasMore')
-    expect(content).toHaveProperty('nextPageToken')
+    // nextPageToken is optional - only present when there are more results
+    if (content.hasMore) {
+      expect(content).toHaveProperty('nextPageToken')
+    }
     
     // Verify we got the expected folders
     const folderNames = content.files
@@ -76,6 +79,7 @@ describe('listDirectory tool', () => {
     // Add more files to trigger pagination
     for (let i = 1; i <= 25; i++) {
       stub.addTestFile({
+        id: `test-file-${i}`,
         name: `file-${i}.txt`,
         mimeType: 'text/plain',
         parents: ['root'],
@@ -132,6 +136,7 @@ describe('listDirectory tool', () => {
   it('should handle includeShared parameter', async () => {
     // Add a shared file that we don't own
     stub.addTestFile({
+      id: 'external-shared-file',
       name: 'external-shared.docx',
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       parents: ['root'],
@@ -139,15 +144,19 @@ describe('listDirectory tool', () => {
       ownedByMe: false,
     })
 
-    // List without shared files
+    // List Documents folder without shared files
     const withoutShared = await tool.handler({
-      folderPath: '/',
+      folderPath: '/Documents',
       includeShared: false,
       pageSize: 50
     })
 
-    // Verify the query includes sharedWithMe = false
-    expect(stub.apiCalls[0].params.q).toContain('sharedWithMe = false')
+    // Find the actual listDirectory call (after path resolution)
+    const listCall = stub.apiCalls.find(call => 
+      call.method === 'filesList' && call.params.q?.includes('in parents') && !call.params.q?.includes('name =')
+    )
+    expect(listCall).toBeDefined()
+    expect(listCall?.params.q).toContain('sharedWithMe = false')
 
     const content = JSON.parse(withoutShared.content[0].text)
     
@@ -204,7 +213,7 @@ describe('listDirectory tool', () => {
 
   it('should have correct metadata', () => {
     expect(tool.name).toBe('list_directory')
-    expect(tool.description).toBe('Lists files and folders in a Google Drive directory. Supports pagination to limit response size. Use folderPath (e.g., "/Documents") instead of folder IDs for easier navigation.')
+    expect(tool.description).toContain('Lists files and folders in a Google Drive directory')
     expect(tool.schema).toBeDefined()
     
     // Verify schema properties
@@ -213,5 +222,7 @@ describe('listDirectory tool', () => {
     expect(tool.schema).toHaveProperty('onlyDirectories')
     expect(tool.schema).toHaveProperty('pageSize')
     expect(tool.schema).toHaveProperty('pageToken')
+    expect(tool.schema).toHaveProperty('fields')
+    expect(tool.schema).toHaveProperty('query')
   })
 })

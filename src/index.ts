@@ -6,8 +6,6 @@ import { GoogleHandler } from './google-handler'
 import { createListDirectoryTool } from './tools/list-directory'
 import { createReadFileTool } from './tools/read-file'
 import { createSearchFilesTool } from './tools/search-files'
-import { createShowDirectoryTreeTool } from './tools/show-directory-tree'
-import { createShowFileTreeTool } from './tools/show-file-tree'
 import { createMoveFilesTool } from './tools/move-files'
 import { GoogleDriveService } from './services/google-drive'
 
@@ -42,8 +40,6 @@ export class GDriveOrganizerMCP extends McpAgent<Env, {}, Props> {
       createListDirectoryTool(this.driveService),
       createReadFileTool(this.driveService),
       createSearchFilesTool(this.driveService),
-      createShowDirectoryTreeTool(this.driveService),
-      createShowFileTreeTool(this.driveService),
       createMoveFilesTool(this.driveService)
     ]
     
