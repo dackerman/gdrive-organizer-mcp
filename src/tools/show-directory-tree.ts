@@ -60,33 +60,7 @@ function formatDirectoryTree(directories: string[]): string {
     return 'No directories found.'
   }
 
-  const lines: string[] = []
-  lines.push('📁 Directory Tree:')
-  lines.push('')
-
-  // Sort directories to ensure proper tree structure
   const sortedDirs = [...directories].sort()
 
-  for (let i = 0; i < sortedDirs.length; i++) {
-    const dir = sortedDirs[i]
-    const depth = dir === '/' ? 0 : dir.split('/').length - 1
-    const indent = '  '.repeat(depth)
-    const folderName = dir === '/' ? 'My Drive (root)' : dir.split('/').pop()
-    
-    // Add tree characters for better visualization
-    let prefix = ''
-    if (depth > 0) {
-      // Check if this is the last item at this level
-      const isLast = i === sortedDirs.length - 1 || 
-                    (i < sortedDirs.length - 1 && !sortedDirs[i + 1].startsWith(dir + '/'))
-      prefix = isLast ? '└── ' : '├── '
-    }
-    
-    lines.push(`${indent}${prefix}📁 ${folderName}`)
-  }
-
-  lines.push('')
-  lines.push(`Total directories: ${directories.length}`)
-
-  return lines.join('\n')
+  return sortedDirs.join('\n')
 }
