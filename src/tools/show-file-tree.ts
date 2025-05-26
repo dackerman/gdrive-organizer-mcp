@@ -4,8 +4,8 @@ import { DriveService } from '../types/drive'
 // Define the schema for show_file_tree parameters
 export const showFileTreeSchema = z.object({
   rootPath: z.string().optional().default('/'),
-  maxDepth: z.number().min(1).max(20).optional().default(10),
-  maxFiles: z.number().min(1).max(1000).optional().default(500)
+  maxDepth: z.number().min(1).max(5).optional().default(3),
+  maxFiles: z.number().min(1).max(200).optional().default(100)
 })
 
 // Type inference from the schema

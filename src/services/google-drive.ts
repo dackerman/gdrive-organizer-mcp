@@ -111,7 +111,44 @@ export class GoogleDriveService implements DriveService {
     const directories: string[] = []
     const rootId = await this.resolvePathToId(rootPath)
     
-    await this.traverseDirectories(rootId, rootPath, directories, 0, maxDepth)
+    // Use breadth-first traversal to minimize API calls
+    const queue: Array<{ id: string; path: string; depth: number }> = [
+      { id: rootId, path: rootPath, depth: 0 }
+    ]
+    
+    // Process in batches to avoid too many concurrent requests
+    while (queue.length > 0) {
+      // Process up to 5 folders at once to limit concurrent API calls
+      const batch = queue.splice(0, 5)
+      
+      await Promise.all(
+        batch.map(async ({ id, path, depth }) => {
+          if (depth >= maxDepth) return
+          
+          directories.push(path)
+          
+          try {
+            const contents = await this.listDirectory({ folderId: id, maxResults: 100 })
+            
+            for (const item of contents.files) {
+              if (item.isFolder) {
+                const childPath = path === '/' ? '/' + item.name : path + '/' + item.name
+                
+                // Cache the path
+                this.pathToIdCache.set(childPath, item.id)
+                this.idToPathCache.set(item.id, childPath)
+                
+                // Add to queue for next iteration
+                queue.push({ id: item.id, path: childPath, depth: depth + 1 })
+              }
+            }
+          } catch (error) {
+            console.error(`[GoogleDriveService] Error processing folder ${path}:`, error)
+            // Continue with other folders even if one fails
+          }
+        })
+      )
+    }
     
     return directories.sort()
   }
@@ -126,7 +163,45 @@ export class GoogleDriveService implements DriveService {
     const files: string[] = []
     const rootId = await this.resolvePathToId(rootPath)
     
-    await this.traverseFiles(rootId, rootPath, files, 0, maxDepth)
+    // Use breadth-first traversal to minimize API calls
+    const queue: Array<{ id: string; path: string; depth: number }> = [
+      { id: rootId, path: rootPath, depth: 0 }
+    ]
+    
+    // Process in batches to avoid too many concurrent requests
+    while (queue.length > 0) {
+      // Process up to 5 folders at once to limit concurrent API calls
+      const batch = queue.splice(0, 5)
+      
+      await Promise.all(
+        batch.map(async ({ id, path, depth }) => {
+          if (depth >= maxDepth) return
+          
+          try {
+            const contents = await this.listDirectory({ folderId: id, maxResults: 100 })
+            
+            for (const item of contents.files) {
+              const itemPath = path === '/' ? '/' + item.name : path + '/' + item.name
+              
+              // Cache the path
+              this.pathToIdCache.set(itemPath, item.id)
+              this.idToPathCache.set(item.id, itemPath)
+              
+              if (item.isFolder) {
+                // Add to queue for next iteration
+                queue.push({ id: item.id, path: itemPath, depth: depth + 1 })
+              } else {
+                // Add file to list
+                files.push(itemPath)
+              }
+            }
+          } catch (error) {
+            console.error(`[GoogleDriveService] Error processing folder ${path}:`, error)
+            // Continue with other folders even if one fails
+          }
+        })
+      )
+    }
     
     return files.sort()
   }
@@ -173,59 +248,6 @@ export class GoogleDriveService implements DriveService {
     return parentPath === '/' ? '/' + file.name : parentPath + '/' + file.name
   }
   
-  private async traverseDirectories(
-    folderId: string, 
-    currentPath: string, 
-    directories: string[], 
-    depth: number, 
-    maxDepth: number
-  ): Promise<void> {
-    if (depth >= maxDepth) return
-    
-    directories.push(currentPath)
-    
-    const contents = await this.listDirectory({ folderId, maxResults: 1000 })
-    
-    for (const item of contents.files) {
-      if (item.isFolder) {
-        const childPath = currentPath === '/' ? '/' + item.name : currentPath + '/' + item.name
-        
-        // Cache the path
-        this.pathToIdCache.set(childPath, item.id)
-        this.idToPathCache.set(item.id, childPath)
-        
-        await this.traverseDirectories(item.id, childPath, directories, depth + 1, maxDepth)
-      }
-    }
-  }
-  
-  private async traverseFiles(
-    folderId: string, 
-    currentPath: string, 
-    files: string[], 
-    depth: number, 
-    maxDepth: number
-  ): Promise<void> {
-    if (depth >= maxDepth) return
-    
-    const contents = await this.listDirectory({ folderId, maxResults: 1000 })
-    
-    for (const item of contents.files) {
-      const itemPath = currentPath === '/' ? '/' + item.name : currentPath + '/' + item.name
-      
-      // Cache the path
-      this.pathToIdCache.set(itemPath, item.id)
-      this.idToPathCache.set(item.id, itemPath)
-      
-      if (item.isFolder) {
-        // Recurse into subdirectories
-        await this.traverseFiles(item.id, itemPath, files, depth + 1, maxDepth)
-      } else {
-        // Add file to list
-        files.push(itemPath)
-      }
-    }
-  }
 
   async listDirectory(params: {
     folderId?: string
