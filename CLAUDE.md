@@ -125,3 +125,7 @@ All components include detailed logging prefixed with their module name:
 - `[listDirectory tool]` - Tool execution
 
 Check the Cloudflare Workers logs or local dev console for debugging information.
+
+## Memories
+
+- When building mcp tools, we should try to minimize the amount of LLM context that is used by both inputs and outputs. If the input schema is large and complex, an LLM is going to have a harder time knowing how to call it. Additionally, if the response data is inscrutible, hard to follow, or has additional unneeded information, then it wastes tokens.

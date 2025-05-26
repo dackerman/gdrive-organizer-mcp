@@ -200,7 +200,7 @@ describe('GoogleDriveService Write Operations', () => {
       
       const movedChild1Contents = await service.listDirectory({ folderId: childFolder1.id })
       expect(movedChild1Contents.files.some(f => f.id === grandchildFolder.id)).toBe(true)
-    })
+    }, 10000)
   })
 
   describe('bulk operations scenario', () => {
