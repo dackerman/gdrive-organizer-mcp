@@ -9,29 +9,36 @@ This server provides tools for exploring, analyzing, and reorganizing your Googl
 ### Available Tools
 
 - **`list_directory`** - Browse files and folders in your Google Drive
-
-  - Lists up to 100 files per request
-  - Shows file paths, sizes, and sharing status
-  - Supports filtering by folder and shared files
+  - Lists up to 100 files per request with pagination support
+  - Flexible field selection to minimize token usage
+  - Supports advanced Google Drive query syntax for filtering
+  - Options to filter by shared files or directories only
+  - Shows file paths, sizes, sharing status, and metadata
 
 - **`read_file`** - Read file contents with smart handling
-
-  - Supports pagination for large files (default 1MB chunks)
-  - Automatically exports Google Docs to readable formats
-  - Returns base64 encoding for binary files
-  - Handles text files with UTF-8 encoding
+  - Supports text files and Google Docs/Sheets (exported as plain text)
+  - Handles binary files with base64 encoding
+  - Supports partial reads with offset parameters for large files (max 10MB)
+  - Automatically exports Google Workspace files to readable formats
 
 - **`search_files`** - Search across your entire Drive
-  - Search by file name or content
+  - Full-text search in file names and content
+  - Advanced Google Drive query syntax support
   - Filter by folder, MIME type, or name pattern (regex)
-  - Sort results by modification time
-  - Returns same rich metadata as list_directory
+  - Configurable max results (1-1000, default 50)
+  - Returns same flexible metadata as list_directory
 
-### Coming Soon
+- **`move_files`** - Move or rename files and folders
+  - Supports move, rename, or both in a single operation
+  - Batch processing of multiple files/folders
+  - Atomic per-item operations with detailed success/failure reporting
+  - Smart path-to-ID resolution with caching
 
-- **`create_folder`** - Create new folders for organization
-- **`execute_plan`** - Execute AI-generated organization plans
-- **`get_operation_status`** - Monitor long-running operations
+- **`create_folders`** - Create folders from paths
+  - Automatically creates parent directories as needed
+  - Batch folder creation from multiple paths
+  - Handles existing folders gracefully
+  - Returns folder IDs and creation status
 
 ## Getting Started
 
@@ -69,21 +76,21 @@ This server provides tools for exploring, analyzing, and reorganizing your Googl
 git clone https://github.com/yourusername/gdrive-organizer-mcp.git
 cd gdrive-organizer-mcp
 
-# Install dependencies
+# Install dependencies (requires pnpm)
 pnpm install
 
 # Set up Cloudflare secrets
-wrangler secret put GOOGLE_CLIENT_ID
-wrangler secret put GOOGLE_CLIENT_SECRET
-wrangler secret put COOKIE_ENCRYPTION_KEY # Generate with: openssl rand -hex 32
-wrangler secret put HOSTED_DOMAIN # Optional: restrict to your Google Workspace domain
+pnpm wrangler secret put GOOGLE_CLIENT_ID
+pnpm wrangler secret put GOOGLE_CLIENT_SECRET
+pnpm wrangler secret put COOKIE_ENCRYPTION_KEY # Generate with: openssl rand -hex 32
+pnpm wrangler secret put HOSTED_DOMAIN # Optional: restrict to your Google Workspace domain
 
 # Create KV namespace for OAuth storage
-wrangler kv:namespace create "OAUTH_KV"
+pnpm wrangler kv:namespace create "OAUTH_KV"
 # Update wrangler.jsonc with the generated KV namespace ID
 
 # Deploy to Cloudflare Workers
-wrangler deploy
+pnpm run deploy
 ```
 
 #### 3. Connect to Claude Desktop
@@ -114,7 +121,7 @@ Restart Claude Desktop. When you first use a Drive tool, you'll be prompted to a
    ```
 3. Run the development server:
    ```bash
-   pnpm dev
+   pnpm run dev
    ```
 4. Test with MCP Inspector:
    ```bash
@@ -174,18 +181,30 @@ Claude: I found 5 budget spreadsheets:
 Would you like me to read any of these files to analyze the project details?
 ```
 
-**File organization (coming soon):**
+**File organization:**
 
 ```
 You: "My Documents folder is a mess. Can you help organize it by project?"
-Claude: I'll analyze your Documents folder and suggest an organization plan.
-[Uses list_directory and show_directory_tree to understand current structure]
+Claude: I'll analyze your Documents folder and help organize it.
+[Uses list_directory to understand current structure]
+[Uses create_folders to create new organization structure]
 [Uses move_files to reorganize files into project folders]
 Claude: I've organized your 23 documents into these project folders:
 - /Documents/Projects/Website_Redesign/ (5 files)
 - /Documents/Projects/Q1_Planning/ (8 files)
 - /Documents/Admin/Contracts/ (4 files)
 ...
+```
+
+**Batch operations:**
+
+```
+You: "Create folders for each month of 2024 in my Archives folder"
+Claude: I'll create monthly folders for 2024 in your Archives folder.
+[Uses create_folders with paths like /Archives/2024/January, /Archives/2024/February, etc.]
+Claude: I've created 12 monthly folders in /Archives/2024/:
+- January/ through December/
+All folders were created successfully.
 ```
 
 ### Simple Commands
@@ -197,7 +216,9 @@ You can also use simple commands:
 - "Read the contents of /Documents/project_plan.docx"
 - "Find all PDF files in my Drive"
 - "Search for files containing 'quarterly report'"
-- "Show me the folder structure of my Photos directory"
+- "Move budget.xlsx to the Finance folder"
+- "Rename 'Untitled Document' to 'Project Proposal 2024'"
+- "Create folders for Q1, Q2, Q3, Q4 in my Reports directory"
 
 ## Troubleshooting
 
@@ -220,7 +241,7 @@ If you see "Google Drive API error: 403 Forbidden":
 If you encounter TLS certificate errors during local development:
 
 ```bash
-env SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt pnpm dev
+env SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt pnpm run dev
 ```
 
 ## Architecture
@@ -236,6 +257,14 @@ The server acts as both:
 
 - An OAuth **server** to MCP clients (Claude, Inspector, etc.)
 - An OAuth **client** to Google's OAuth services
+
+### Key Features
+
+- **Automatic Token Refresh** - Tokens are refreshed proactively before expiration and on 401 errors
+- **Smart Path Resolution** - Efficient path-to-ID resolution with caching
+- **Batch Operations** - Multiple files/folders can be processed in single tool calls
+- **Flexible Field Selection** - List and search tools allow selecting specific fields to minimize token usage
+- **Comprehensive Testing** - Includes unit tests, integration tests, and API stub verification
 
 ## Contributing
 
