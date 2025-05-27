@@ -1,3 +1,5 @@
+import { OAUTH_PARAMS } from './oauth-constants'
+
 /**
  * Constructs an authorization URL for an upstream service.
  *
@@ -29,9 +31,9 @@ export function getUpstreamAuthorizeUrl({
   upstream.searchParams.set("client_id", clientId);
   upstream.searchParams.set("redirect_uri", redirectUri);
   upstream.searchParams.set("scope", scope);
-  upstream.searchParams.set("response_type", "code");
-  upstream.searchParams.set("access_type", "offline"); // Request refresh token
-  upstream.searchParams.set("prompt", "consent"); // Force consent to ensure refresh token
+  upstream.searchParams.set("response_type", OAUTH_PARAMS.RESPONSE_TYPE);
+  upstream.searchParams.set("access_type", OAUTH_PARAMS.ACCESS_TYPE); // Request refresh token
+  upstream.searchParams.set("prompt", OAUTH_PARAMS.PROMPT); // Force consent to ensure refresh token
   if (state) upstream.searchParams.set("state", state);
   if (hostedDomain) upstream.searchParams.set("hd", hostedDomain);
   return upstream.href;
@@ -80,8 +82,8 @@ export async function fetchUpstreamAuthToken({
       code, 
       redirect_uri: redirectUri, 
       grant_type: grantType,
-      access_type: 'offline', // Request refresh token
-      prompt: 'consent' // Force consent to ensure refresh token is returned
+      access_type: OAUTH_PARAMS.ACCESS_TYPE, // Request refresh token
+      prompt: OAUTH_PARAMS.PROMPT // Force consent to ensure refresh token is returned
     }).toString(),
   });
   if (!resp.ok) {

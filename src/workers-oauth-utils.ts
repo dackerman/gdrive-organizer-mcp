@@ -1,6 +1,7 @@
 // workers-oauth-utils.ts
 
 import type { ClientInfo, AuthRequest } from '@cloudflare/workers-oauth-provider' // Adjust path if necessary
+import { getCookie, buildSetCookie, signCookieValue, verifyCookieValue } from './cookie-utils'
 
 const COOKIE_NAME = 'mcp-approved-clients'
 const ONE_YEAR_IN_SECONDS = 31536000
@@ -39,59 +40,7 @@ function decodeState<T = any>(encoded: string): T {
   }
 }
 
-/**
- * Imports a secret key string for HMAC-SHA256 signing.
- * @param secret - The raw secret key string.
- * @returns A promise resolving to the CryptoKey object.
- */
-async function importKey(secret: string): Promise<CryptoKey> {
-  if (!secret) {
-    throw new Error('COOKIE_ENCRYPTION_KEY is not defined. A secret key is required for signing cookies.')
-  }
-  const enc = new TextEncoder()
-  return crypto.subtle.importKey(
-    'raw',
-    enc.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false, // not extractable
-    ['sign', 'verify'], // key usages
-  )
-}
-
-/**
- * Signs data using HMAC-SHA256.
- * @param key - The CryptoKey for signing.
- * @param data - The string data to sign.
- * @returns A promise resolving to the signature as a hex string.
- */
-async function signData(key: CryptoKey, data: string): Promise<string> {
-  const enc = new TextEncoder()
-  const signatureBuffer = await crypto.subtle.sign('HMAC', key, enc.encode(data))
-  // Convert ArrayBuffer to hex string
-  return Array.from(new Uint8Array(signatureBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-/**
- * Verifies an HMAC-SHA256 signature.
- * @param key - The CryptoKey for verification.
- * @param signatureHex - The signature to verify (hex string).
- * @param data - The original data that was signed.
- * @returns A promise resolving to true if the signature is valid, false otherwise.
- */
-async function verifySignature(key: CryptoKey, signatureHex: string, data: string): Promise<boolean> {
-  const enc = new TextEncoder()
-  try {
-    // Convert hex signature back to ArrayBuffer
-    const signatureBytes = new Uint8Array(signatureHex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)))
-    return await crypto.subtle.verify('HMAC', key, signatureBytes.buffer, enc.encode(data))
-  } catch (e) {
-    // Handle errors during hex parsing or verification
-    console.error('Error verifying signature:', e)
-    return false
-  }
-}
+// Note: HMAC signing functions have been moved to cookie-utils.ts
 
 /**
  * Parses the signed cookie and verifies its integrity.
@@ -100,37 +49,20 @@ async function verifySignature(key: CryptoKey, signatureHex: string, data: strin
  * @returns A promise resolving to the list of approved client IDs if the cookie is valid, otherwise null.
  */
 async function getApprovedClientsFromCookie(cookieHeader: string | null, secret: string): Promise<string[] | null> {
-  if (!cookieHeader) return null
+  const cookieValue = getCookie(cookieHeader, COOKIE_NAME)
+  if (!cookieValue) return null
 
-  const cookies = cookieHeader.split(';').map((c) => c.trim())
-  const targetCookie = cookies.find((c) => c.startsWith(`${COOKIE_NAME}=`))
-
-  if (!targetCookie) return null
-
-  const cookieValue = targetCookie.substring(COOKIE_NAME.length + 1)
-  const parts = cookieValue.split('.')
-
-  if (parts.length !== 2) {
-    console.warn('Invalid cookie format received.')
-    return null // Invalid format
-  }
-
-  const [signatureHex, base64Payload] = parts
-  const payload = atob(base64Payload) // Assuming payload is base64 encoded JSON string
-
-  const key = await importKey(secret)
-  const isValid = await verifySignature(key, signatureHex, payload)
-
-  if (!isValid) {
+  const payload = await verifyCookieValue(cookieValue, secret)
+  if (!payload) {
     console.warn('Cookie signature verification failed.')
-    return null // Signature invalid
+    return null
   }
 
   try {
     const approvedClients = JSON.parse(payload)
     if (!Array.isArray(approvedClients)) {
       console.warn('Cookie payload is not an array.')
-      return null // Payload isn't an array
+      return null
     }
     // Ensure all elements are strings
     if (!approvedClients.every((item) => typeof item === 'string')) {
@@ -140,7 +72,7 @@ async function getApprovedClientsFromCookie(cookieHeader: string | null, secret:
     return approvedClients as string[]
   } catch (e) {
     console.error('Error parsing cookie payload:', e)
-    return null // JSON parsing failed
+    return null
   }
 }
 
@@ -598,13 +530,21 @@ export async function parseRedirectApproval(request: Request, cookieSecret: stri
 
   // Sign the updated list
   const payload = JSON.stringify(updatedApprovedClients)
-  const key = await importKey(cookieSecret)
-  const signature = await signData(key, payload)
-  const newCookieValue = `${signature}.${btoa(payload)}` // signature.base64(payload)
+  const signedValue = await signCookieValue(payload, cookieSecret)
 
   // Generate Set-Cookie header
+  const setCookieHeader = buildSetCookie({
+    name: COOKIE_NAME,
+    value: signedValue,
+    maxAge: ONE_YEAR_IN_SECONDS,
+    path: '/',
+    secure: true,
+    httpOnly: true,
+    sameSite: 'lax'
+  })
+  
   const headers: Record<string, string> = {
-    'Set-Cookie': `${COOKIE_NAME}=${newCookieValue}; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=${ONE_YEAR_IN_SECONDS}`,
+    'Set-Cookie': setCookieHeader,
   }
 
   return { state, headers }

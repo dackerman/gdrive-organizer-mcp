@@ -8,6 +8,7 @@ import {
   GoogleDriveFilesDeleteParams,
   GoogleDriveFilesExportParams,
 } from '../types/google-drive-api'
+import { OAUTH_URLS, OAUTH_PARAMS } from '../oauth-constants'
 
 /**
  * Google Drive API v3 Client
@@ -93,7 +94,7 @@ export class GoogleDriveApiClient {
     }
 
     console.log('[GoogleDriveApiClient] Refreshing access token...')
-    const response = await fetch('https://oauth2.googleapis.com/token', {
+    const response = await fetch(OAUTH_URLS.TOKEN, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -102,7 +103,7 @@ export class GoogleDriveApiClient {
         client_id: this.clientId,
         client_secret: this.clientSecret,
         refresh_token: this.refreshToken,
-        grant_type: 'refresh_token',
+        grant_type: OAUTH_PARAMS.REFRESH_GRANT_TYPE,
       }),
     })
 

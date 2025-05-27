@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import { DriveService } from '../types/drive'
+import { createMCPTextResponse } from '../mcp-utils'
+import { DrivePathUtils } from '../drive-query-utils'
 
 // Define the schema for individual move operations
 export const moveOperationSchema = z.object({
@@ -50,7 +52,7 @@ export interface MoveFilesResult {
 // Factory function to create the tool with injected dependencies
 export function createMoveFilesTool(driveService: DriveService) {
   // The actual handler function
-  async function moveFiles(params: MoveFilesParams): Promise<{ content: Array<{ type: 'text', text: string }> }> {
+  async function moveFiles(params: MoveFilesParams) {
     console.log('[moveFiles tool] Called with:', {
       operationCount: params.operations.length
     })
@@ -66,8 +68,8 @@ export function createMoveFilesTool(driveService: DriveService) {
         
         try {
           // Determine if this is a move or rename operation
-          const fromDir = operation.from.substring(0, operation.from.lastIndexOf('/')) || '/'
-          const toDir = operation.to.substring(0, operation.to.lastIndexOf('/')) || '/'
+          const fromDir = DrivePathUtils.getParentPath(operation.from)
+          const toDir = DrivePathUtils.getParentPath(operation.to)
           const isRename = fromDir === toDir
           
           // Resolve source path to ID
@@ -163,14 +165,7 @@ export function createMoveFilesTool(driveService: DriveService) {
       console.log('[moveFiles tool] Completed:', result.summary)
       
       // Format response according to MCP spec
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(result, null, 2)
-          }
-        ]
-      }
+      return createMCPTextResponse(result)
     } catch (error) {
       console.error('[moveFiles tool] Error:', error)
       throw error

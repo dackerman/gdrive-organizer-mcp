@@ -1,6 +1,7 @@
 import { GoogleDriveApiClient } from './google-drive-api-client'
 import { GoogleDriveFile, GOOGLE_DRIVE_MIME_TYPES, GOOGLE_WORKSPACE_EXPORT_FORMATS } from '../types/google-drive-api'
 import { DriveService, DriveFile, ListDirectoryResult, ReadFileResult, SearchFilesResult } from '../types/drive'
+import { DriveQueryBuilder, DrivePathUtils } from '../drive-query-utils'
 
 /**
  * Adapter that provides backward compatibility with the existing DriveService interface
@@ -141,10 +142,14 @@ export class GoogleDriveAdapter implements DriveService {
       }
       
       // Search for the part in current directory
-      // Escape single quotes in the name for the query
-      const escapedPart = part.replace(/'/g, "\\'")
+      const query = DriveQueryBuilder.create()
+        .inParents(currentId)
+        .nameEquals(part)
+        .notTrashed()
+        .build()
+        
       const response = await this.apiClient.filesList({
-        q: `'${currentId}' in parents and name = '${escapedPart}' and trashed = false`,
+        q: query,
         fields: 'files(id,name)',
         pageSize: 1,
       })
@@ -220,21 +225,35 @@ export class GoogleDriveAdapter implements DriveService {
         query = `'${targetFolderId}' in parents and (${query})`
       }
     } else {
-      // Default query
-      query = `'${targetFolderId}' in parents`
+      // Build default query using query builder
+      const queryBuilder = DriveQueryBuilder.create()
+        .inParents(targetFolderId)
+      
+      // Always exclude trashed files unless explicitly included in user query
+      queryBuilder.notTrashed()
+      
+      // Apply additional filters
+      if (!includeShared) {
+        queryBuilder.custom('sharedWithMe = false')
+      }
+      if (onlyDirectories) {
+        queryBuilder.mimeTypeEquals(GOOGLE_DRIVE_MIME_TYPES.FOLDER)
+      }
+      
+      query = queryBuilder.build()
     }
     
-    // Always exclude trashed files unless explicitly included
-    if (!query.includes('trashed')) {
-      query += ' and trashed = false'
-    }
-    
-    // Apply additional filters
-    if (!includeShared && !query.includes('sharedWithMe')) {
-      query += ' and sharedWithMe = false'
-    }
-    if (onlyDirectories && !query.includes('mimeType')) {
-      query += ` and mimeType = '${GOOGLE_DRIVE_MIME_TYPES.FOLDER}'`
+    // For user queries, add constraints if not already present
+    if (userQuery) {
+      if (!query.includes('trashed')) {
+        query += ' and trashed = false'
+      }
+      if (!includeShared && !query.includes('sharedWithMe')) {
+        query += ' and sharedWithMe = false'
+      }
+      if (onlyDirectories && !query.includes('mimeType')) {
+        query += ` and mimeType = '${GOOGLE_DRIVE_MIME_TYPES.FOLDER}'`
+      }
     }
 
     // Make API request
@@ -409,27 +428,28 @@ export class GoogleDriveAdapter implements DriveService {
     } = params
 
     // Build search query
-    const queryParts: string[] = []
+    const queryBuilder = DriveQueryBuilder.create()
     
     // Add text search
     if (query) {
-      queryParts.push(`(name contains '${query}' or fullText contains '${query}')`)
+      // Create a custom condition for combined name/fullText search
+      queryBuilder.custom(`(name contains '${query.replace(/'/g, "\\'") }' or fullText contains '${query.replace(/'/g, "\\'")}')`)  
     }
     
     // Add folder filter
     if (folderId) {
-      queryParts.push(`'${folderId}' in parents`)
+      queryBuilder.inParents(folderId)
     }
     
     // Add mime type filter
     if (mimeType) {
-      queryParts.push(`mimeType = '${mimeType}'`)
+      queryBuilder.mimeTypeEquals(mimeType)
     }
     
     // Always exclude trashed files
-    queryParts.push('trashed = false')
+    queryBuilder.notTrashed()
     
-    const driveQuery = queryParts.join(' and ')
+    const driveQuery = queryBuilder.build()
 
     // Make API request
     const response = await this.apiClient.filesList({
@@ -587,7 +607,7 @@ export class GoogleDriveAdapter implements DriveService {
             })
             
             for (const item of response.files) {
-              const itemPath = path === '/' ? '/' + item.name : path + '/' + item.name
+              const itemPath = DrivePathUtils.joinPath(path, item.name)
               
               this.pathToIdCache.set(itemPath, item.id)
               this.idToPathCache.set(item.id, itemPath)
@@ -609,11 +629,6 @@ export class GoogleDriveAdapter implements DriveService {
   }
 
   private normalizePath(path: string): string {
-    if (!path || path === '') return '/'
-    if (!path.startsWith('/')) path = '/' + path
-    if (path.length > 1 && path.endsWith('/')) {
-      path = path.slice(0, -1)
-    }
-    return path
+    return DrivePathUtils.normalizePath(path)
   }
 }

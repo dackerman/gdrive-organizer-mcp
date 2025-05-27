@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import { DriveService } from '../types/drive'
+import { createMCPTextResponse } from '../mcp-utils'
+import { DrivePathUtils } from '../drive-query-utils'
 
 // Define the schema for create_folders parameters
 export const createFoldersSchema = z.object({
@@ -55,7 +57,7 @@ export function createCreateFoldersTool(driveService: DriveService) {
         await driveService.resolvePathToId(currentPath)
       } catch (error) {
         // Parent doesn't exist, we need to create it
-        const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/'
+        const parentPath = DrivePathUtils.getParentPath(currentPath)
         const parentId = await driveService.resolvePathToId(parentPath)
         const folderName = parts[i]
         
@@ -66,7 +68,7 @@ export function createCreateFoldersTool(driveService: DriveService) {
   }
   
   // The actual handler function
-  async function createFolders(params: CreateFoldersParams): Promise<{ content: Array<{ type: 'text', text: string }> }> {
+  async function createFolders(params: CreateFoldersParams) {
     // Validate parameters
     const validated = createFoldersSchema.parse(params)
     const skipExisting = validated.skipExisting ?? true // Default to true
@@ -87,7 +89,7 @@ export function createCreateFoldersTool(driveService: DriveService) {
       
       try {
         // Normalize path
-        const normalizedPath = path.startsWith('/') ? path : '/' + path
+        const normalizedPath = DrivePathUtils.normalizePath(path)
         
         // Check if folder already exists
         let exists = false
@@ -126,8 +128,8 @@ export function createCreateFoldersTool(driveService: DriveService) {
         await ensureParentPath(normalizedPath)
         
         // Create the folder
-        const folderName = normalizedPath.split('/').filter(p => p).pop()!
-        const parentPath = normalizedPath.substring(0, normalizedPath.lastIndexOf('/')) || '/'
+        const folderName = DrivePathUtils.getNameFromPath(normalizedPath)
+        const parentPath = DrivePathUtils.getParentPath(normalizedPath)
         const parentId = await driveService.resolvePathToId(parentPath)
         
         const result = await driveService.createFolder(folderName, parentId)
@@ -175,14 +177,7 @@ export function createCreateFoldersTool(driveService: DriveService) {
     console.log('[createFolders tool] Completed:', result.summary)
     
     // Format response according to MCP spec
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify(result, null, 2)
-        }
-      ]
-    }
+    return createMCPTextResponse(result)
   }
 
   // Return the tool definition

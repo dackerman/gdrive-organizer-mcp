@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { DriveService } from '../types/drive'
+import { createMCPTextResponse } from '../mcp-utils'
 
 // Define the schema for search_files parameters
 export const searchFilesSchema = z.object({
@@ -79,14 +80,7 @@ export function createSearchFilesTool(driveService: DriveService) {
       }
 
       // Format response according to MCP spec
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(formattedResult, null, 2)
-          }
-        ]
-      }
+      return createMCPTextResponse(formattedResult)
     } catch (error) {
       console.error('[searchFiles tool] Error:', error)
       throw error

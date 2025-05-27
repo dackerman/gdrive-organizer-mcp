@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { DriveService } from '../types/drive'
+import { createMCPTextResponse } from '../mcp-utils'
 
 // Define the schema for read_file parameters
 export const readFileSchema = z.object({
@@ -63,14 +64,7 @@ export function createReadFileTool(driveService: DriveService) {
       })
 
       // Format response according to MCP spec
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(result, null, 2)
-          }
-        ]
-      }
+      return createMCPTextResponse(result)
     } catch (error) {
       console.error('[readFile tool] Error:', error)
       throw error

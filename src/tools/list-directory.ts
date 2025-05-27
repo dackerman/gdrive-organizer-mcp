@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { DriveService } from '../types/drive'
+import { createMCPTextResponse } from '../mcp-utils'
 
 // Available fields that can be returned for each file
 const AVAILABLE_FIELDS = [
@@ -96,44 +97,35 @@ export function createListDirectoryTool(driveService: DriveService) {
       const formattedFiles = result.files.map(file => {
         const fileData: any = {}
         
+        // Map standard DriveFile fields
+        const standardFields = ['id', 'name', 'mimeType', 'size', 'createdTime', 'modifiedTime', 'parents']
+        requestedFields.forEach(field => {
+          if (standardFields.includes(field) && field in file) {
+            const value = file[field as keyof typeof file]
+            if (value !== undefined) {
+              fileData[field] = value
+            }
+          }
+        })
+        
+        // Handle special/computed fields
         requestedFields.forEach(field => {
           switch (field) {
-            case 'id':
-              fileData.id = file.id
-              break
-            case 'name':
-              fileData.name = file.name
-              break
             case 'path':
-              fileData.path = file.path
-              break
-            case 'mimeType':
-              fileData.mimeType = file.mimeType
-              break
-            case 'size':
-              if (file.size !== undefined) fileData.size = file.size
-              break
-            case 'createdTime':
-              fileData.createdTime = file.createdTime
-              break
-            case 'modifiedTime':
-              fileData.modifiedTime = file.modifiedTime
-              break
-            case 'parents':
-              fileData.parents = file.parents
+              if (file.path) fileData.path = file.path
               break
             case 'isFolder':
             case 'isDirectory':
               fileData.isDirectory = file.isFolder
               break
             case 'isShared':
-              fileData.isShared = file.isShared
+              if (file.isShared !== undefined) fileData.isShared = file.isShared
               break
             case 'sharingStatus':
-              fileData.sharingStatus = file.sharingStatus
+              if (file.sharingStatus) fileData.sharingStatus = file.sharingStatus
               break
             case 'folderDepth':
-              fileData.folderDepth = file.folderDepth
+              if (file.folderDepth !== undefined) fileData.folderDepth = file.folderDepth
               break
           }
         })
@@ -149,14 +141,7 @@ export function createListDirectoryTool(driveService: DriveService) {
       }
 
       // Format response according to MCP spec
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(formattedResult, null, 2)
-          }
-        ]
-      }
+      return createMCPTextResponse(formattedResult)
     } catch (error) {
       console.error('[listDirectory tool] Error:', error)
       throw error

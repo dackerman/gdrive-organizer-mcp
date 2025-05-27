@@ -2,6 +2,8 @@ import type { AuthRequest, OAuthHelpers } from '@cloudflare/workers-oauth-provid
 import { Hono, Context } from 'hono'
 import { fetchUpstreamAuthToken, getUpstreamAuthorizeUrl, Props } from './utils'
 import { clientIdAlreadyApproved, parseRedirectApproval, renderApprovalDialog } from './workers-oauth-utils'
+import { OAUTH_URLS, buildScopeString, OAUTH_PARAMS } from './oauth-constants'
+import { encodeSecureState, decodeSecureState } from './secure-state'
 
 const app = new Hono<{ Bindings: Env & { OAUTH_PROVIDER: OAuthHelpers } }>()
 
@@ -36,17 +38,22 @@ app.post('/authorize', async (c) => {
 })
 
 async function redirectToGoogle(c: Context, oauthReqInfo: AuthRequest, headers: Record<string, string> = {}) {
-  console.log('[GoogleHandler] Redirecting to Google with scopes:', 'email profile https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file')
+  const scopes = buildScopeString()
+  console.log('[GoogleHandler] Redirecting to Google with scopes:', scopes)
+  
+  // Use secure state encoding with HMAC signature
+  const secureState = await encodeSecureState(oauthReqInfo, c.env.COOKIE_ENCRYPTION_KEY)
+  
   return new Response(null, {
     status: 302,
     headers: {
       ...headers,
       location: getUpstreamAuthorizeUrl({
-        upstreamUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-        scope: 'email profile https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file',
+        upstreamUrl: OAUTH_URLS.AUTHORIZE,
+        scope: scopes,
         clientId: c.env.GOOGLE_CLIENT_ID,
         redirectUri: new URL('/callback', c.req.raw.url).href,
-        state: btoa(JSON.stringify(oauthReqInfo)),
+        state: secureState,
         hostedDomain: c.env.HOSTED_DOMAIN,
       }),
     },
@@ -62,10 +69,15 @@ async function redirectToGoogle(c: Context, oauthReqInfo: AuthRequest, headers: 
  * down to the client. It ends by redirecting the client back to _its_ callback URL
  */
 app.get('/callback', async (c) => {
-  // Get the oathReqInfo out of KV
-  const oauthReqInfo = JSON.parse(atob(c.req.query('state') as string)) as AuthRequest
-  if (!oauthReqInfo.clientId) {
-    return c.text('Invalid state', 400)
+  // Decode and verify the secure state
+  const stateParam = c.req.query('state') as string
+  if (!stateParam) {
+    return c.text('Missing state parameter', 400)
+  }
+  
+  const oauthReqInfo = await decodeSecureState<AuthRequest>(stateParam, c.env.COOKIE_ENCRYPTION_KEY)
+  if (!oauthReqInfo || !oauthReqInfo.clientId) {
+    return c.text('Invalid or tampered state', 400)
   }
 
   // Exchange the code for an access token
@@ -76,12 +88,12 @@ app.get('/callback', async (c) => {
 
   console.log('[GoogleHandler] Exchanging code for access token')
   const [tokenData, googleErrResponse] = await fetchUpstreamAuthToken({
-    upstreamUrl: 'https://accounts.google.com/o/oauth2/token',
+    upstreamUrl: OAUTH_URLS.TOKEN,
     clientId: c.env.GOOGLE_CLIENT_ID,
     clientSecret: c.env.GOOGLE_CLIENT_SECRET,
     code,
     redirectUri: new URL('/callback', c.req.url).href,
-    grantType: 'authorization_code',
+    grantType: OAUTH_PARAMS.GRANT_TYPE,
   })
   if (googleErrResponse) {
     console.error('[GoogleHandler] Failed to get access token:', googleErrResponse)
@@ -95,7 +107,7 @@ app.get('/callback', async (c) => {
 
   // Fetch the user info from Google
   console.log('[GoogleHandler] Fetching user info from Google')
-  const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+  const userResponse = await fetch(OAUTH_URLS.USERINFO, {
     headers: {
       Authorization: `Bearer ${tokenData.accessToken}`,
     },
