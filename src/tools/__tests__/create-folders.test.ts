@@ -1,47 +1,27 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { createCreateFoldersTool } from '../create-folders'
 import { DriveService } from '../../types/drive'
-
-// Mock the DriveService
-const createMockDriveService = (): DriveService => ({
-  listDirectory: vi.fn(),
-  readFile: vi.fn(),
-  searchFiles: vi.fn(),
-  moveFile: vi.fn(),
-  moveFolder: vi.fn(),
-  createFolder: vi.fn(),
-  renameFile: vi.fn(),
-  renameFolder: vi.fn(),
-  resolvePathToId: vi.fn(),
-  resolveIdToPath: vi.fn(),
-  buildDirectoryTree: vi.fn(),
-  buildFileTree: vi.fn(),
-})
+import { GoogleDriveTestFactory } from '../../test/google-drive-test-factory'
+import { GoogleDriveApiStub } from '../../test/google-drive-api-stub'
+import { GOOGLE_DRIVE_MIME_TYPES } from '../../types/google-drive-api'
 
 describe('createFolders tool', () => {
-  let mockDriveService: DriveService
+  let driveService: DriveService
+  let apiStub: GoogleDriveApiStub
   let tool: ReturnType<typeof createCreateFoldersTool>
 
   beforeEach(() => {
-    mockDriveService = createMockDriveService()
-    tool = createCreateFoldersTool(mockDriveService)
+    const { stub, service } = GoogleDriveTestFactory.createMinimal()
+    apiStub = stub
+    driveService = service
+    tool = createCreateFoldersTool(driveService)
   })
 
   it('should create a single folder', async () => {
-    // Mock path resolution - folder doesn't exist
-    vi.mocked(mockDriveService.resolvePathToId)
-      .mockRejectedValueOnce(new Error('Path not found')) // /Documents doesn't exist
-      .mockResolvedValueOnce('root') // / exists
-      .mockResolvedValueOnce('created-folder-id') // After creation
-
-    vi.mocked(mockDriveService.createFolder).mockResolvedValueOnce({ id: 'created-folder-id' })
-
+    // The folder doesn't exist initially, so the stub will create it
     const result = await tool.handler({
       paths: ['/Documents'],
     })
-
-    // Verify service calls
-    expect(mockDriveService.createFolder).toHaveBeenCalledWith('Documents', 'root')
 
     // Parse and verify result
     const parsed = JSON.parse(result.content[0].text)
@@ -58,100 +38,77 @@ describe('createFolders tool', () => {
         {
           path: '/Documents',
           success: true,
-          id: 'created-folder-id',
+          id: expect.stringMatching(/^file-\d+$/),
           created: true,
         },
       ],
     })
+
+    // Verify the folder was actually created in the stub
+    const allFiles = apiStub.getAllFiles()
+    const documentsFolder = allFiles.find(f => f.name === 'Documents' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
+    expect(documentsFolder).toBeDefined()
+    expect(documentsFolder?.parents).toEqual(['root'])
   })
 
   it('should create multiple folders', async () => {
-    // Mock resolutions
-    vi.mocked(mockDriveService.resolvePathToId)
-      .mockRejectedValueOnce(new Error('Not found')) // /Folder1 doesn't exist
-      .mockResolvedValueOnce('root') // / exists
-      .mockRejectedValueOnce(new Error('Not found')) // /Folder2 doesn't exist
-      .mockResolvedValueOnce('root') // / exists
-      .mockRejectedValueOnce(new Error('Not found')) // /Folder3 doesn't exist
-      .mockResolvedValueOnce('root') // / exists
-
-    vi.mocked(mockDriveService.createFolder)
-      .mockResolvedValueOnce({ id: 'folder1-id' })
-      .mockResolvedValueOnce({ id: 'folder2-id' })
-      .mockResolvedValueOnce({ id: 'folder3-id' })
-
     const result = await tool.handler({
       paths: ['/Folder1', '/Folder2', '/Folder3'],
     })
-
-    expect(mockDriveService.createFolder).toHaveBeenCalledTimes(3)
 
     const parsed = JSON.parse(result.content[0].text)
     expect(parsed.success).toBe(true)
     expect(parsed.summary.foldersCreated).toBe(3)
     expect(parsed.results).toHaveLength(3)
     expect(parsed.results.every((r: any) => r.success && r.created)).toBe(true)
+
+    // Verify all folders were created in the stub
+    const allFiles = apiStub.getAllFiles()
+    const createdFolders = allFiles.filter(f => 
+      ['Folder1', 'Folder2', 'Folder3'].includes(f.name) && 
+      f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER
+    )
+    expect(createdFolders).toHaveLength(3)
+    expect(createdFolders.every(f => f.parents?.[0] === 'root')).toBe(true)
   })
 
   it('should create nested folders with parent creation', async () => {
-    // This test is complex because we need to mock the parent creation flow
-    // The tool will:
-    // 1. Check if /Documents/Projects/2024 exists (no)
-    // 2. Call ensureParentPath which checks /Documents (no), creates it
-    // 3. Then checks /Documents/Projects (no), creates it
-    // 4. Finally creates /Documents/Projects/2024
-
-    const resolvePathCalls = [
-      // Initial check for full path
-      { path: '/Documents/Projects/2024', result: new Error('Not found') },
-      // ensureParentPath checks
-      { path: '/Documents', result: new Error('Not found') },
-      { path: '/', result: 'root' },
-      { path: '/Documents/Projects', result: new Error('Not found') },
-      { path: '/Documents', result: 'documents-id' },
-      // Final parent resolution
-      { path: '/Documents/Projects', result: 'projects-id' },
-    ]
-
-    let callIndex = 0
-    vi.mocked(mockDriveService.resolvePathToId).mockImplementation(async (path) => {
-      const call = resolvePathCalls[callIndex++]
-      if (call.result instanceof Error) {
-        throw call.result
-      }
-      return call.result
-    })
-
-    vi.mocked(mockDriveService.createFolder)
-      .mockResolvedValueOnce({ id: 'documents-id' }) // Create Documents
-      .mockResolvedValueOnce({ id: 'projects-id' }) // Create Projects
-      .mockResolvedValueOnce({ id: '2024-id' }) // Create 2024
-
+    // The tool will automatically create parent folders as needed
     const result = await tool.handler({
       paths: ['/Documents/Projects/2024'],
     })
 
-    // Should have created all three folders
-    expect(mockDriveService.createFolder).toHaveBeenCalledTimes(3)
-    expect(mockDriveService.createFolder).toHaveBeenCalledWith('Documents', 'root')
-    expect(mockDriveService.createFolder).toHaveBeenCalledWith('Projects', 'documents-id')
-    expect(mockDriveService.createFolder).toHaveBeenCalledWith('2024', 'projects-id')
-
     const parsed = JSON.parse(result.content[0].text)
     expect(parsed.success).toBe(true)
     expect(parsed.summary.foldersCreated).toBe(1) // Only counts the requested folder, not parents
+
+    // Verify the entire folder structure was created
+    const allFiles = apiStub.getAllFiles()
+    
+    const documentsFolder = allFiles.find(f => f.name === 'Documents' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
+    expect(documentsFolder).toBeDefined()
+    expect(documentsFolder?.parents).toEqual(['root'])
+    
+    const projectsFolder = allFiles.find(f => f.name === 'Projects' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
+    expect(projectsFolder).toBeDefined()
+    expect(projectsFolder?.parents).toEqual([documentsFolder!.id])
+    
+    const yearFolder = allFiles.find(f => f.name === '2024' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
+    expect(yearFolder).toBeDefined()
+    expect(yearFolder?.parents).toEqual([projectsFolder!.id])
   })
 
   it('should skip existing folders by default', async () => {
-    // Mock - folder already exists
-    vi.mocked(mockDriveService.resolvePathToId).mockResolvedValueOnce('existing-folder-id')
+    // Create a folder first
+    const existingFolder = apiStub.addTestFile({
+      name: 'ExistingFolder',
+      mimeType: GOOGLE_DRIVE_MIME_TYPES.FOLDER,
+      parents: ['root'],
+    })
 
     const result = await tool.handler({
       paths: ['/ExistingFolder'],
     })
-
-    // Should not try to create
-    expect(mockDriveService.createFolder).not.toHaveBeenCalled()
 
     const parsed = JSON.parse(result.content[0].text)
     expect(parsed.success).toBe(true)
@@ -160,22 +117,28 @@ describe('createFolders tool', () => {
     expect(parsed.results[0]).toEqual({
       path: '/ExistingFolder',
       success: true,
-      id: 'existing-folder-id',
+      id: existingFolder.id,
       created: false,
     })
+
+    // Verify no new folders were created
+    const allFiles = apiStub.getAllFiles()
+    const foldersWithName = allFiles.filter(f => f.name === 'ExistingFolder')
+    expect(foldersWithName).toHaveLength(1)
   })
 
   it('should report error for existing folders when skipExisting is false', async () => {
-    // Mock - folder already exists
-    vi.mocked(mockDriveService.resolvePathToId).mockResolvedValueOnce('existing-folder-id')
+    // Create a folder first
+    apiStub.addTestFile({
+      name: 'ExistingFolder',
+      mimeType: GOOGLE_DRIVE_MIME_TYPES.FOLDER,
+      parents: ['root'],
+    })
 
     const result = await tool.handler({
       paths: ['/ExistingFolder'],
       skipExisting: false,
     })
-
-    // Should not try to create
-    expect(mockDriveService.createFolder).not.toHaveBeenCalled()
 
     const parsed = JSON.parse(result.content[0].text)
     expect(parsed.success).toBe(false)
@@ -189,17 +152,23 @@ describe('createFolders tool', () => {
   })
 
   it('should handle mixed success and failure', async () => {
-    // Mock resolutions
-    vi.mocked(mockDriveService.resolvePathToId)
-      .mockRejectedValueOnce(new Error('Not found')) // /Success doesn't exist
-      .mockResolvedValueOnce('root')
-      .mockRejectedValueOnce(new Error('Not found')) // /WillFail doesn't exist
-      .mockResolvedValueOnce('root')
-      .mockResolvedValueOnce('existing-id') // /AlreadyExists exists
+    // Create an existing folder
+    apiStub.addTestFile({
+      name: 'AlreadyExists',
+      mimeType: GOOGLE_DRIVE_MIME_TYPES.FOLDER,
+      parents: ['root'],
+    })
 
-    vi.mocked(mockDriveService.createFolder)
-      .mockResolvedValueOnce({ id: 'success-id' })
-      .mockRejectedValueOnce(new Error('Permission denied'))
+    // Override filesCreate to simulate a failure for one folder
+    const originalFilesCreate = apiStub.filesCreate.bind(apiStub)
+    let createCallCount = 0
+    apiStub.filesCreate = async (params) => {
+      createCallCount++
+      if (createCallCount === 2 && params.requestBody.name === 'WillFail') {
+        throw new Error('Permission denied')
+      }
+      return originalFilesCreate(params)
+    }
 
     const result = await tool.handler({
       paths: ['/Success', '/WillFail', '/AlreadyExists'],
@@ -221,23 +190,24 @@ describe('createFolders tool', () => {
   })
 
   it('should normalize paths without leading slash', async () => {
-    vi.mocked(mockDriveService.resolvePathToId).mockRejectedValueOnce(new Error('Not found')).mockResolvedValueOnce('root')
-
-    vi.mocked(mockDriveService.createFolder).mockResolvedValueOnce({ id: 'folder-id' })
-
     const result = await tool.handler({
       paths: ['NoSlash'], // Missing leading slash
     })
 
-    // Should normalize to /NoSlash
-    expect(mockDriveService.resolvePathToId).toHaveBeenCalledWith('/NoSlash')
-
     const parsed = JSON.parse(result.content[0].text)
     expect(parsed.results[0].path).toBe('/NoSlash')
+    
+    // Verify the folder was created with normalized path
+    const allFiles = apiStub.getAllFiles()
+    const folder = allFiles.find(f => f.name === 'NoSlash' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
+    expect(folder).toBeDefined()
   })
 
   it('should handle service errors gracefully', async () => {
-    vi.mocked(mockDriveService.resolvePathToId).mockRejectedValue(new Error('Service unavailable'))
+    // Override filesCreate to simulate a service error when creating the folder
+    apiStub.filesCreate = async () => {
+      throw new Error('Service unavailable')
+    }
 
     const result = await tool.handler({
       paths: ['/TestFolder'],
