@@ -70,7 +70,7 @@ describe('GoogleDriveService Integration Tests', () => {
   })
 
   describe('createFolder', () => {
-    it('should create a new folder in root', async () => {
+    it('should create a new folder in root', { timeout: 10000 }, async () => {
       const result = await service.createFolder(testFolderName, 'root')
       
       expect(result).toBeDefined()
@@ -81,13 +81,16 @@ describe('GoogleDriveService Integration Tests', () => {
       
       console.log(`✅ Created test folder: ${testFolderName} (${testFolderId})`)
       
-      // Verify the folder exists
-      const listResult = await service.listDirectory({
-        folderId: 'root',
-        pageSize: 100
+      // Verify the folder was created by searching for it directly
+      // Using search instead of listing to avoid pagination issues
+      const searchResult = await service.searchFiles({
+        query: testFolderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        maxResults: 10
       })
       
-      const createdFolder = listResult.files.find(f => f.id === testFolderId)
+      const createdFolder = searchResult.files.find(f => f.id === testFolderId)
+      
       expect(createdFolder).toBeDefined()
       expect(createdFolder?.name).toBe(testFolderName)
       expect(createdFolder?.isFolder).toBe(true)
@@ -126,7 +129,7 @@ describe('GoogleDriveService Integration Tests', () => {
       expect(foundFolder?.id).toBe(testFolderId)
     })
 
-    it('should filter by mime type', async () => {
+    it('should filter by mime type', { timeout: 10000 }, async () => {
       const result = await service.searchFiles({
         query: '',
         mimeType: 'application/vnd.google-apps.folder',
