@@ -7,21 +7,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Development
 
 ```bash
-npm run dev          # Start local dev server on port 8788
-npm run start        # Alias for dev
+pnpm run dev          # Start local dev server on port 8788
+pnpm run start        # Alias for dev
 ```
 
 ### Deployment
 
 ```bash
-npm run deploy       # Deploy to Cloudflare Workers
+pnpm run deploy       # Deploy to Cloudflare Workers
 ```
 
 ### Type Checking
 
 ```bash
-npm run cf-typegen   # Generate Cloudflare types
-npm run type-check   # Run TypeScript type checking
+pnpm run cf-typegen   # Generate Cloudflare types
+pnpm run type-check   # Run TypeScript type checking
 ```
 
 ## Architecture Overview
@@ -104,7 +104,7 @@ async callTool(name: string, args: Record<string, any>) {
    GOOGLE_CLIENT_ID=your_dev_client_id
    GOOGLE_CLIENT_SECRET=your_dev_client_secret
    ```
-3. Run `npm run dev` to start local server
+3. Run `pnpm run dev` to start local server
 4. Test with MCP Inspector at `http://localhost:8788/sse`
 
 ## Troubleshooting

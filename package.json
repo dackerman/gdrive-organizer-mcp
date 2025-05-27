@@ -11,6 +11,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
+    "test:all": "pnpm run test:run && pnpm run test:integration && pnpm run test:stub-verification",
     "test:integration": "vitest run --config vitest.config.integration.ts",
     "test:stub-verification": "vitest run --config vitest.config.stub-verification.ts",
     "test:get-token": "node scripts/get-test-credentials.js",
