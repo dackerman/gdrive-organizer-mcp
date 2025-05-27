@@ -71,7 +71,14 @@ export function createMoveFilesTool(driveService: DriveService) {
           const isRename = fromDir === toDir
           
           // Resolve source path to ID
-          const sourceId = await driveService.resolvePathToId(operation.from)
+          let sourceId: string
+          try {
+            sourceId = await driveService.resolvePathToId(operation.from)
+          } catch (error) {
+            // If path resolution fails, provide a more helpful error message
+            console.error('[moveFiles tool] Failed to resolve source path:', operation.from, error)
+            throw new Error(`Source file/folder not found: ${operation.from}`)
+          }
           
           if (isRename) {
             // This is a rename operation (same directory)
@@ -92,7 +99,13 @@ export function createMoveFilesTool(driveService: DriveService) {
             }
           } else {
             // This is a move operation (different directory)
-            const destinationParentId = await driveService.resolvePathToId(toDir)
+            let destinationParentId: string
+            try {
+              destinationParentId = await driveService.resolvePathToId(toDir)
+            } catch (error) {
+              console.error('[moveFiles tool] Failed to resolve destination path:', toDir, error)
+              throw new Error(`Destination folder not found: ${toDir}`)
+            }
             
             // Check if it's a file or folder
             const files = await driveService.listDirectory({ folderId: fromDir === '/' ? 'root' : await driveService.resolvePathToId(fromDir) })

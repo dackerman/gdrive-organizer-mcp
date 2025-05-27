@@ -141,8 +141,10 @@ export class GoogleDriveAdapter implements DriveService {
       }
       
       // Search for the part in current directory
+      // Escape single quotes in the name for the query
+      const escapedPart = part.replace(/'/g, "\\'")
       const response = await this.apiClient.filesList({
-        q: `'${currentId}' in parents and name = '${part}' and trashed = false`,
+        q: `'${currentId}' in parents and name = '${escapedPart}' and trashed = false`,
         fields: 'files(id,name)',
         pageSize: 1,
       })
