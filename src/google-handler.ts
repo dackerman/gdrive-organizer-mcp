@@ -75,7 +75,7 @@ app.get('/callback', async (c) => {
   }
 
   console.log('[GoogleHandler] Exchanging code for access token')
-  const [accessToken, googleErrResponse] = await fetchUpstreamAuthToken({
+  const [tokenData, googleErrResponse] = await fetchUpstreamAuthToken({
     upstreamUrl: 'https://accounts.google.com/o/oauth2/token',
     clientId: c.env.GOOGLE_CLIENT_ID,
     clientSecret: c.env.GOOGLE_CLIENT_SECRET,
@@ -87,13 +87,17 @@ app.get('/callback', async (c) => {
     console.error('[GoogleHandler] Failed to get access token:', googleErrResponse)
     return googleErrResponse
   }
-  console.log('[GoogleHandler] Got access token, length:', accessToken.length)
+  console.log('[GoogleHandler] Got tokens:', {
+    accessTokenLength: tokenData.accessToken.length,
+    hasRefreshToken: !!tokenData.refreshToken,
+    expiresIn: tokenData.expiresIn
+  })
 
   // Fetch the user info from Google
   console.log('[GoogleHandler] Fetching user info from Google')
   const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${tokenData.accessToken}`,
     },
   })
   if (!userResponse.ok) {
@@ -109,6 +113,11 @@ app.get('/callback', async (c) => {
   }
   console.log('[GoogleHandler] Got user info:', { id, name, email })
 
+  // Calculate token expiration time
+  const tokenExpiresAt = tokenData.expiresIn 
+    ? Date.now() + (tokenData.expiresIn * 1000) 
+    : undefined
+
   // Return back to the MCP client a new token
   const { redirectTo } = await c.env.OAUTH_PROVIDER.completeAuthorization({
     request: oauthReqInfo,
@@ -120,7 +129,9 @@ app.get('/callback', async (c) => {
     props: {
       name,
       email,
-      accessToken,
+      accessToken: tokenData.accessToken,
+      refreshToken: tokenData.refreshToken,
+      tokenExpiresAt,
     } as Props,
   })
 

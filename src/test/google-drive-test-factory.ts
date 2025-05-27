@@ -14,7 +14,12 @@ export class GoogleDriveTestFactory {
     service: GoogleDriveAdapter
   } {
     const stub = new GoogleDriveApiStub()
-    const service = new GoogleDriveAdapter('test-token')
+    const service = new GoogleDriveAdapter(
+      'test-token',
+      undefined, // refresh token
+      undefined, // client id
+      undefined  // client secret
+    )
     
     // Override the private apiClient property
     ;(service as any).apiClient = stub
@@ -120,7 +125,12 @@ export class GoogleDriveTestFactory {
     service: GoogleDriveAdapter
   } {
     const stub = new GoogleDriveApiStub()
-    const service = new GoogleDriveAdapter('test-token')
+    const service = new GoogleDriveAdapter(
+      'test-token',
+      undefined, // refresh token
+      undefined, // client id
+      undefined  // client secret
+    )
     
     // Override the private apiClient property
     ;(service as any).apiClient = stub
@@ -136,7 +146,12 @@ export class GoogleDriveTestFactory {
     service: GoogleDriveAdapter
   } {
     const stub = new GoogleDriveApiStub()
-    const service = new GoogleDriveAdapter('test-token')
+    const service = new GoogleDriveAdapter(
+      'test-token',
+      undefined, // refresh token
+      undefined, // client id
+      undefined  // client secret
+    )
     
     // Override the private apiClient property
     ;(service as any).apiClient = stub
@@ -174,7 +189,12 @@ export class GoogleDriveTestFactory {
     service: GoogleDriveAdapter
   } {
     const stub = new GoogleDriveApiStub()
-    const service = new GoogleDriveAdapter('test-token')
+    const service = new GoogleDriveAdapter(
+      'test-token',
+      undefined, // refresh token
+      undefined, // client id
+      undefined  // client secret
+    )
     
     // Override the private apiClient property
     ;(service as any).apiClient = stub

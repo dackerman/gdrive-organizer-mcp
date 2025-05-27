@@ -9,14 +9,7 @@ import { createSearchFilesTool } from './tools/search-files'
 import { createMoveFilesTool } from './tools/move-files'
 import { createCreateFoldersTool } from './tools/create-folders'
 import { GoogleDriveService } from './services/google-drive'
-
-// Context from the auth process, encrypted & stored in the auth token
-// and provided to the GDriveOrganizerMCP as this.props
-type Props = {
-  name: string
-  email: string
-  accessToken: string
-}
+import { Props } from './utils'
 
 export class GDriveOrganizerMCP extends McpAgent<Env, {}, Props> {
   server = new McpServer({
@@ -31,11 +24,18 @@ export class GDriveOrganizerMCP extends McpAgent<Env, {}, Props> {
       name: this.props.name,
       email: this.props.email,
       hasAccessToken: !!this.props.accessToken,
+      hasRefreshToken: !!this.props.refreshToken,
+      tokenExpiresAt: this.props.tokenExpiresAt,
       tokenLength: this.props.accessToken?.length
     })
 
-    // Initialize the drive service with the access token
-    this.driveService = new GoogleDriveService(this.props.accessToken)
+    // Initialize the drive service with all token data
+    this.driveService = new GoogleDriveService(
+      this.props.accessToken,
+      this.props.refreshToken,
+      this.env.GOOGLE_CLIENT_ID,
+      this.env.GOOGLE_CLIENT_SECRET
+    )
 
     const tools = [
       createListDirectoryTool(this.driveService),

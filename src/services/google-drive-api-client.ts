@@ -21,6 +21,7 @@ export class GoogleDriveApiClient {
   private refreshToken?: string
   private clientId?: string
   private clientSecret?: string
+  private tokenExpiresAt?: number // Unix timestamp when the token expires
 
   constructor(
     accessToken: string,
@@ -32,6 +33,9 @@ export class GoogleDriveApiClient {
     this.refreshToken = refreshToken
     this.clientId = clientId
     this.clientSecret = clientSecret
+    
+    // Assume token is valid for 1 hour if not specified
+    this.tokenExpiresAt = Date.now() + (3600 * 1000)
   }
 
   /**
@@ -41,8 +45,14 @@ export class GoogleDriveApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<Response> {
-    // If access token is empty, try to refresh
-    if (!this.accessToken || this.accessToken.trim() === '') {
+    // Check if token is expired or will expire in the next 5 minutes
+    const now = Date.now()
+    const fiveMinutesFromNow = now + (5 * 60 * 1000)
+    
+    if (!this.accessToken || 
+        this.accessToken.trim() === '' || 
+        (this.tokenExpiresAt && this.tokenExpiresAt < fiveMinutesFromNow)) {
+      console.log('[GoogleDriveApiClient] Token expired or expiring soon, refreshing...')
       await this.refreshAccessToken()
     }
 
@@ -66,6 +76,7 @@ export class GoogleDriveApiClient {
 
     // If unauthorized, try refreshing token once
     if (response.status === 401 && this.refreshToken) {
+      console.log('[GoogleDriveApiClient] Got 401, attempting token refresh...')
       await this.refreshAccessToken()
       response = await makeRequestWithToken(this.accessToken)
     }
@@ -81,6 +92,7 @@ export class GoogleDriveApiClient {
       throw new Error('Cannot refresh token: missing refresh token or client credentials')
     }
 
+    console.log('[GoogleDriveApiClient] Refreshing access token...')
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
@@ -99,8 +111,18 @@ export class GoogleDriveApiClient {
       throw new Error(`Failed to refresh token: ${response.status} ${errorText}`)
     }
 
-    const data = await response.json() as { access_token: string }
+    const data = await response.json() as { access_token: string; expires_in?: number }
     this.accessToken = data.access_token
+    
+    // Update token expiration time
+    if (data.expires_in) {
+      this.tokenExpiresAt = Date.now() + (data.expires_in * 1000)
+    } else {
+      // Default to 1 hour if not specified
+      this.tokenExpiresAt = Date.now() + (3600 * 1000)
+    }
+    
+    console.log('[GoogleDriveApiClient] Token refreshed successfully, expires at:', new Date(this.tokenExpiresAt))
   }
 
   /**

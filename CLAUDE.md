@@ -116,12 +116,27 @@ If you get a "403 Forbidden" error when calling Drive tools, check:
    - Request URLs and headers
    - Response status and error bodies
 
+### Token Refresh and Authentication
+
+The service automatically handles token refresh to prevent authentication errors:
+
+1. **Automatic Token Refresh**: When the access token expires (typically after 1 hour), the service automatically refreshes it using the refresh token
+2. **Proactive Refresh**: Tokens are refreshed proactively when they're within 5 minutes of expiration
+3. **401 Recovery**: If a request fails with 401 Unauthorized, the service attempts to refresh the token and retry
+4. **Persistent Sessions**: The refresh token is stored in the MCP token, allowing long-running sessions without re-authentication
+
+**Important Notes**:
+- The initial OAuth flow requests `access_type=offline` and `prompt=consent` to ensure a refresh token is obtained
+- Client credentials (ID and secret) are passed from the environment to the GoogleDriveService for token refresh
+- If token refresh fails (missing refresh token or credentials), the user must re-authenticate
+
 ### Debugging
 
 All components include detailed logging prefixed with their module name:
 - `[GoogleHandler]` - OAuth flow
 - `[GDriveOrganizerMCP]` - MCP server initialization
 - `[GoogleDriveService]` - Drive API calls
+- `[GoogleDriveApiClient]` - Token refresh and API requests
 - `[listDirectory tool]` - Tool execution
 
 Check the Cloudflare Workers logs or local dev console for debugging information.

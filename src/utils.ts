@@ -30,6 +30,8 @@ export function getUpstreamAuthorizeUrl({
   upstream.searchParams.set("redirect_uri", redirectUri);
   upstream.searchParams.set("scope", scope);
   upstream.searchParams.set("response_type", "code");
+  upstream.searchParams.set("access_type", "offline"); // Request refresh token
+  upstream.searchParams.set("prompt", "consent"); // Force consent to ensure refresh token
   if (state) upstream.searchParams.set("state", state);
   if (hostedDomain) upstream.searchParams.set("hd", hostedDomain);
   return upstream.href;
@@ -62,7 +64,7 @@ export async function fetchUpstreamAuthToken({
   redirectUri: string;
   clientId: string;
   grantType: string;
-}): Promise<[string, null] | [null, Response]> {
+}): Promise<[{ accessToken: string; refreshToken?: string; expiresIn?: number }, null] | [null, Response]> {
   if (!code) {
     return [null, new Response("Missing code", { status: 400 })];
   }
@@ -77,7 +79,9 @@ export async function fetchUpstreamAuthToken({
       client_secret: clientSecret, 
       code, 
       redirect_uri: redirectUri, 
-      grant_type: grantType 
+      grant_type: grantType,
+      access_type: 'offline', // Request refresh token
+      prompt: 'consent' // Force consent to ensure refresh token is returned
     }).toString(),
   });
   if (!resp.ok) {
@@ -87,13 +91,20 @@ export async function fetchUpstreamAuthToken({
 
   interface authTokenResponse {
     access_token: string
+    refresh_token?: string
+    expires_in?: number
+    token_type?: string
   }
 
   const body = (await resp.json()) as authTokenResponse
   if (!body.access_token) {
     return [null, new Response('Missing access token', { status: 400 })]
   }
-  return [body.access_token, null]
+  return [{
+    accessToken: body.access_token,
+    refreshToken: body.refresh_token,
+    expiresIn: body.expires_in
+  }, null]
 }
 
 // Context from the auth process, encrypted & stored in the auth token
@@ -102,4 +113,6 @@ export type Props = {
   name: string
   email: string
   accessToken: string
+  refreshToken?: string
+  tokenExpiresAt?: number // Unix timestamp when the token expires
 }
