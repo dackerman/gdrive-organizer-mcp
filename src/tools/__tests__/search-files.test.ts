@@ -116,7 +116,8 @@ describe('searchFiles tool', () => {
     const tool = createSearchFilesTool(mockDriveService)
 
     const result = await tool.handler({
-      query: 'nonexistent'
+      query: 'nonexistent',
+      maxResults: 50
     })
 
     const parsed = JSON.parse(result.content[0].text)
@@ -130,7 +131,8 @@ describe('searchFiles tool', () => {
     const tool = createSearchFilesTool(mockDriveService)
 
     await expect(tool.handler({
-      query: 'test'
+      query: 'test',
+      maxResults: 50
     })).rejects.toThrow('Search failed')
   })
 

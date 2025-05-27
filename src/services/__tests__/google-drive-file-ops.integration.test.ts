@@ -121,7 +121,7 @@ describe('GoogleDriveService File Operations', () => {
       // you can test listing them here
       const result = await service.listDirectory({
         folderId: testRootFolderId,
-        maxResults: 100
+        pageSize: 100
       })
 
       console.log(`Found ${result.files.length} items in test folder:`)
@@ -134,7 +134,7 @@ describe('GoogleDriveService File Operations', () => {
       // List all files in root to find examples
       const result = await service.listDirectory({
         folderId: 'root',
-        maxResults: 20
+        pageSize: 20
       })
 
       const fileTypes = new Set(result.files.map(f => f.mimeType))

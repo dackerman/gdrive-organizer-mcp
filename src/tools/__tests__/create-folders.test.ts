@@ -91,7 +91,7 @@ describe('createFolders tool', () => {
     expect(parsed.success).toBe(true)
     expect(parsed.summary.foldersCreated).toBe(3)
     expect(parsed.results).toHaveLength(3)
-    expect(parsed.results.every(r => r.success && r.created)).toBe(true)
+    expect(parsed.results.every((r: any) => r.success && r.created)).toBe(true)
   })
 
   it('should create nested folders with parent creation', async () => {

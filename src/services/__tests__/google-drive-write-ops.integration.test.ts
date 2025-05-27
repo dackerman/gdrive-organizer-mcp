@@ -204,7 +204,7 @@ describe('GoogleDriveService Write Operations', () => {
   })
 
   describe('bulk operations scenario', () => {
-    it('should handle a realistic bulk move scenario', { timeout: 20000 }, async () => {
+    it('should handle a realistic bulk move scenario', async () => {
       // Create base folders in parallel
       const [docsFolder, projectsFolder, miscFolder] = await Promise.all([
         service.createFolder('Documents', testRootFolderId),
@@ -254,7 +254,7 @@ describe('GoogleDriveService Write Operations', () => {
       // Verify old locations are empty
       const miscContents = await service.listDirectory({ folderId: miscFolder.id })
       expect(miscContents.files.length).toBe(0)
-    }, 15000) // Increase timeout to 15s
+    }, 20000)
   })
 
   describe('error handling', () => {

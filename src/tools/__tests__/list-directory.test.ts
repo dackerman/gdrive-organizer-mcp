@@ -7,7 +7,7 @@ import { GoogleDriveAdapter } from '../../services/google-drive-adapter'
 describe('listDirectory tool', () => {
   let stub: GoogleDriveApiStub
   let service: GoogleDriveAdapter
-  let tool: ReturnType<typeof createListDirectoryTool>
+  let tool: any
 
   beforeEach(() => {
     // Create fresh instances for each test

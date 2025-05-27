@@ -65,12 +65,10 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
     
     const fullFile: GoogleDriveFile = {
       id,
-      name: file.name,
       mimeType: file.mimeType || 'text/plain',
       createdTime: file.createdTime || now,
       modifiedTime: file.modifiedTime || now,
       parents: file.parents || ['root'],
-      size: file.size,
       shared: file.shared || false,
       ownedByMe: file.ownedByMe ?? true,
       trashed: file.trashed || false,
@@ -190,6 +188,7 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
     
     const file: GoogleDriveFile = {
       id,
+      mimeType: params.requestBody.mimeType || 'application/octet-stream',
       ...params.requestBody,
       createdTime: now,
       modifiedTime: now,

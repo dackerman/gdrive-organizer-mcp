@@ -189,7 +189,7 @@ describe('GoogleDriveService - Practical Integration Tests', () => {
       }
       
       // Check current parent
-      const currentParent = testFolder.parents[0]
+      const currentParent = testFolder!.parents[0]
       const isInTestOps = currentParent === testOperationsFolderId
       const targetFolder = isInTestOps ? folderAId : testOperationsFolderId
       const targetName = isInTestOps ? 'FolderA' : 'TestOperations'
@@ -197,7 +197,7 @@ describe('GoogleDriveService - Practical Integration Tests', () => {
       console.log(`Moving folder from ${isInTestOps ? 'TestOperations' : 'FolderA'} to ${targetName}`)
       
       // Move the folder
-      await service.moveFolder(testFolder.id, targetFolder)
+      await service.moveFolder(testFolder!.id, targetFolder)
       
       // Verify it moved
       const targetFiles = await service.listDirectory({ folderId: targetFolder })
