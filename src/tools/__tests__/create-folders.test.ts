@@ -46,7 +46,7 @@ describe('createFolders tool', () => {
 
     // Verify the folder was actually created in the stub
     const allFiles = apiStub.getAllFiles()
-    const documentsFolder = allFiles.find(f => f.name === 'Documents' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
+    const documentsFolder = allFiles.find((f) => f.name === 'Documents' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
     expect(documentsFolder).toBeDefined()
     expect(documentsFolder?.parents).toEqual(['root'])
   })
@@ -64,12 +64,11 @@ describe('createFolders tool', () => {
 
     // Verify all folders were created in the stub
     const allFiles = apiStub.getAllFiles()
-    const createdFolders = allFiles.filter(f => 
-      ['Folder1', 'Folder2', 'Folder3'].includes(f.name) && 
-      f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER
+    const createdFolders = allFiles.filter(
+      (f) => ['Folder1', 'Folder2', 'Folder3'].includes(f.name) && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER,
     )
     expect(createdFolders).toHaveLength(3)
-    expect(createdFolders.every(f => f.parents?.[0] === 'root')).toBe(true)
+    expect(createdFolders.every((f) => f.parents?.[0] === 'root')).toBe(true)
   })
 
   it('should create nested folders with parent creation', async () => {
@@ -84,16 +83,16 @@ describe('createFolders tool', () => {
 
     // Verify the entire folder structure was created
     const allFiles = apiStub.getAllFiles()
-    
-    const documentsFolder = allFiles.find(f => f.name === 'Documents' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
+
+    const documentsFolder = allFiles.find((f) => f.name === 'Documents' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
     expect(documentsFolder).toBeDefined()
     expect(documentsFolder?.parents).toEqual(['root'])
-    
-    const projectsFolder = allFiles.find(f => f.name === 'Projects' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
+
+    const projectsFolder = allFiles.find((f) => f.name === 'Projects' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
     expect(projectsFolder).toBeDefined()
     expect(projectsFolder?.parents).toEqual([documentsFolder!.id])
-    
-    const yearFolder = allFiles.find(f => f.name === '2024' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
+
+    const yearFolder = allFiles.find((f) => f.name === '2024' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
     expect(yearFolder).toBeDefined()
     expect(yearFolder?.parents).toEqual([projectsFolder!.id])
   })
@@ -123,7 +122,7 @@ describe('createFolders tool', () => {
 
     // Verify no new folders were created
     const allFiles = apiStub.getAllFiles()
-    const foldersWithName = allFiles.filter(f => f.name === 'ExistingFolder')
+    const foldersWithName = allFiles.filter((f) => f.name === 'ExistingFolder')
     expect(foldersWithName).toHaveLength(1)
   })
 
@@ -196,10 +195,10 @@ describe('createFolders tool', () => {
 
     const parsed = JSON.parse(result.content[0].text)
     expect(parsed.results[0].path).toBe('/NoSlash')
-    
+
     // Verify the folder was created with normalized path
     const allFiles = apiStub.getAllFiles()
-    const folder = allFiles.find(f => f.name === 'NoSlash' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
+    const folder = allFiles.find((f) => f.name === 'NoSlash' && f.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER)
     expect(folder).toBeDefined()
   })
 
