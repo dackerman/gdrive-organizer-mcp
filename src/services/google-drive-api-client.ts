@@ -13,7 +13,7 @@ import { OAUTH_URLS, OAUTH_PARAMS } from '../oauth-constants'
 /**
  * Google Drive API v3 Client
  * A thin wrapper around the Google Drive REST API that closely matches the API structure
- * 
+ *
  * @see https://developers.google.com/drive/api/v3/reference
  */
 export class GoogleDriveApiClient {
@@ -24,50 +24,38 @@ export class GoogleDriveApiClient {
   private clientSecret?: string
   private tokenExpiresAt?: number // Unix timestamp when the token expires
 
-  constructor(
-    accessToken: string,
-    refreshToken?: string,
-    clientId?: string,
-    clientSecret?: string
-  ) {
+  constructor(accessToken: string, refreshToken?: string, clientId?: string, clientSecret?: string) {
     this.accessToken = accessToken
     this.refreshToken = refreshToken
     this.clientId = clientId
     this.clientSecret = clientSecret
-    
+
     // Assume token is valid for 1 hour if not specified
-    this.tokenExpiresAt = Date.now() + (3600 * 1000)
+    this.tokenExpiresAt = Date.now() + 3600 * 1000
   }
 
   /**
    * Makes an authenticated request to the Google Drive API
    */
-  private async makeRequest(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<Response> {
+  private async makeRequest(endpoint: string, options: RequestInit = {}): Promise<Response> {
     // Check if token is expired or will expire in the next 5 minutes
     const now = Date.now()
-    const fiveMinutesFromNow = now + (5 * 60 * 1000)
-    
-    if (!this.accessToken || 
-        this.accessToken.trim() === '' || 
-        (this.tokenExpiresAt && this.tokenExpiresAt < fiveMinutesFromNow)) {
+    const fiveMinutesFromNow = now + 5 * 60 * 1000
+
+    if (!this.accessToken || this.accessToken.trim() === '' || (this.tokenExpiresAt && this.tokenExpiresAt < fiveMinutesFromNow)) {
       console.log('[GoogleDriveApiClient] Token expired or expiring soon, refreshing...')
       await this.refreshAccessToken()
     }
 
-    const url = endpoint.startsWith('http') 
-      ? endpoint 
-      : `${GoogleDriveApiClient.API_BASE}${endpoint}`
+    const url = endpoint.startsWith('http') ? endpoint : `${GoogleDriveApiClient.API_BASE}${endpoint}`
 
     const makeRequestWithToken = async (token: string) => {
       return fetch(url, {
         ...options,
         headers: {
           ...options.headers,
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
         },
       })
     }
@@ -112,17 +100,17 @@ export class GoogleDriveApiClient {
       throw new Error(`Failed to refresh token: ${response.status} ${errorText}`)
     }
 
-    const data = await response.json() as { access_token: string; expires_in?: number }
+    const data = (await response.json()) as { access_token: string; expires_in?: number }
     this.accessToken = data.access_token
-    
+
     // Update token expiration time
     if (data.expires_in) {
-      this.tokenExpiresAt = Date.now() + (data.expires_in * 1000)
+      this.tokenExpiresAt = Date.now() + data.expires_in * 1000
     } else {
       // Default to 1 hour if not specified
-      this.tokenExpiresAt = Date.now() + (3600 * 1000)
+      this.tokenExpiresAt = Date.now() + 3600 * 1000
     }
-    
+
     console.log('[GoogleDriveApiClient] Token refreshed successfully, expires at:', new Date(this.tokenExpiresAt))
   }
 
@@ -132,7 +120,7 @@ export class GoogleDriveApiClient {
    */
   async filesList(params: GoogleDriveFilesListParams = {}): Promise<GoogleDriveFilesListResponse> {
     const searchParams = new URLSearchParams()
-    
+
     if (params.q) searchParams.append('q', params.q)
     if (params.pageSize) searchParams.append('pageSize', params.pageSize.toString())
     if (params.pageToken) searchParams.append('pageToken', params.pageToken)
@@ -153,13 +141,13 @@ export class GoogleDriveApiClient {
     }
 
     const response = await this.makeRequest(`/files?${searchParams.toString()}`)
-    
+
     if (!response.ok) {
       const errorText = await response.text()
       throw new Error(`Failed to list files: ${response.status} ${errorText}`)
     }
 
-    return await response.json() as GoogleDriveFilesListResponse
+    return (await response.json()) as GoogleDriveFilesListResponse
   }
 
   /**
@@ -168,7 +156,7 @@ export class GoogleDriveApiClient {
    */
   async filesGet(params: GoogleDriveFilesGetParams): Promise<GoogleDriveFile> {
     const searchParams = new URLSearchParams()
-    
+
     if (params.fields) searchParams.append('fields', params.fields)
     if (params.acknowledgeAbuse !== undefined) {
       searchParams.append('acknowledgeAbuse', params.acknowledgeAbuse.toString())
@@ -183,15 +171,15 @@ export class GoogleDriveApiClient {
 
     const queryString = searchParams.toString()
     const url = `/files/${params.fileId}${queryString ? `?${queryString}` : ''}`
-    
+
     const response = await this.makeRequest(url)
-    
+
     if (!response.ok) {
       const errorText = await response.text()
       throw new Error(`Failed to get file: ${response.status} ${errorText}`)
     }
 
-    return await response.json() as GoogleDriveFile
+    return (await response.json()) as GoogleDriveFile
   }
 
   /**
@@ -200,7 +188,7 @@ export class GoogleDriveApiClient {
    */
   async filesUpdate(params: GoogleDriveFilesUpdateParams): Promise<GoogleDriveFile> {
     const searchParams = new URLSearchParams()
-    
+
     if (params.addParents) searchParams.append('addParents', params.addParents)
     if (params.removeParents) searchParams.append('removeParents', params.removeParents)
     if (params.fields) searchParams.append('fields', params.fields)
@@ -221,7 +209,7 @@ export class GoogleDriveApiClient {
 
     const queryString = searchParams.toString()
     const url = `/files/${params.fileId}${queryString ? `?${queryString}` : ''}`
-    
+
     const response = await this.makeRequest(url, {
       method: 'PATCH',
       headers: {
@@ -229,13 +217,13 @@ export class GoogleDriveApiClient {
       },
       body: JSON.stringify(params.requestBody || {}),
     })
-    
+
     if (!response.ok) {
       const errorText = await response.text()
       throw new Error(`Failed to update file: ${response.status} ${errorText}`)
     }
 
-    return await response.json() as GoogleDriveFile
+    return (await response.json()) as GoogleDriveFile
   }
 
   /**
@@ -244,7 +232,7 @@ export class GoogleDriveApiClient {
    */
   async filesCreate(params: GoogleDriveFilesCreateParams): Promise<GoogleDriveFile> {
     const searchParams = new URLSearchParams()
-    
+
     if (params.fields) searchParams.append('fields', params.fields)
     if (params.ignoreDefaultVisibility !== undefined) {
       searchParams.append('ignoreDefaultVisibility', params.ignoreDefaultVisibility.toString())
@@ -266,7 +254,7 @@ export class GoogleDriveApiClient {
 
     const queryString = searchParams.toString()
     const url = `/files${queryString ? `?${queryString}` : ''}`
-    
+
     const response = await this.makeRequest(url, {
       method: 'POST',
       headers: {
@@ -274,13 +262,13 @@ export class GoogleDriveApiClient {
       },
       body: JSON.stringify(params.requestBody),
     })
-    
+
     if (!response.ok) {
       const errorText = await response.text()
       throw new Error(`Failed to create file: ${response.status} ${errorText}`)
     }
 
-    return await response.json() as GoogleDriveFile
+    return (await response.json()) as GoogleDriveFile
   }
 
   /**
@@ -289,18 +277,18 @@ export class GoogleDriveApiClient {
    */
   async filesDelete(params: GoogleDriveFilesDeleteParams): Promise<void> {
     const searchParams = new URLSearchParams()
-    
+
     if (params.supportsAllDrives !== undefined) {
       searchParams.append('supportsAllDrives', params.supportsAllDrives.toString())
     }
 
     const queryString = searchParams.toString()
     const url = `/files/${params.fileId}${queryString ? `?${queryString}` : ''}`
-    
+
     const response = await this.makeRequest(url, {
       method: 'DELETE',
     })
-    
+
     if (!response.ok) {
       const errorText = await response.text()
       throw new Error(`Failed to delete file: ${response.status} ${errorText}`)
@@ -314,9 +302,9 @@ export class GoogleDriveApiClient {
   async filesDownload(fileId: string, options: { alt?: 'media' } = {}): Promise<Response> {
     const searchParams = new URLSearchParams()
     searchParams.append('alt', options.alt || 'media')
-    
+
     const response = await this.makeRequest(`/files/${fileId}?${searchParams.toString()}`)
-    
+
     if (!response.ok) {
       const errorText = await response.text()
       throw new Error(`Failed to download file: ${response.status} ${errorText}`)
@@ -332,11 +320,9 @@ export class GoogleDriveApiClient {
   async filesExport(params: GoogleDriveFilesExportParams): Promise<Response> {
     const searchParams = new URLSearchParams()
     searchParams.append('mimeType', params.mimeType)
-    
-    const response = await this.makeRequest(
-      `/files/${params.fileId}/export?${searchParams.toString()}`
-    )
-    
+
+    const response = await this.makeRequest(`/files/${params.fileId}/export?${searchParams.toString()}`)
+
     if (!response.ok) {
       const errorText = await response.text()
       throw new Error(`Failed to export file: ${response.status} ${errorText}`)

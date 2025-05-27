@@ -12,7 +12,7 @@ export const OAUTH_URLS = {
 // OAuth scopes
 export const OAUTH_SCOPES = {
   EMAIL: 'email',
-  PROFILE: 'profile', 
+  PROFILE: 'profile',
   DRIVE_FULL: 'https://www.googleapis.com/auth/drive',
   DRIVE_FILE: 'https://www.googleapis.com/auth/drive.file',
   USERINFO_EMAIL: 'https://www.googleapis.com/auth/userinfo.email',
@@ -20,12 +20,7 @@ export const OAUTH_SCOPES = {
 } as const
 
 // Default scopes for the application
-export const DEFAULT_SCOPES = [
-  OAUTH_SCOPES.EMAIL,
-  OAUTH_SCOPES.PROFILE,
-  OAUTH_SCOPES.DRIVE_FULL,
-  OAUTH_SCOPES.DRIVE_FILE,
-] as const
+export const DEFAULT_SCOPES = [OAUTH_SCOPES.EMAIL, OAUTH_SCOPES.PROFILE, OAUTH_SCOPES.DRIVE_FULL, OAUTH_SCOPES.DRIVE_FILE] as const
 
 // OAuth parameters
 export const OAUTH_PARAMS = {

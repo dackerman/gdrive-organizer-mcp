@@ -5,6 +5,7 @@ This directory contains integration tests that verify our Google Drive API imple
 ## Test Philosophy
 
 These tests work with **pre-existing files and folders** in a test Google Drive account. Tests are designed to be:
+
 - **Idempotent**: Can run multiple times without manual reset
 - **Toggle-style**: Operations work in both directions (e.g., move A→B or B→A)
 - **Lenient**: Assert general correctness rather than exact values
@@ -12,6 +13,7 @@ These tests work with **pre-existing files and folders** in a test Google Drive 
 ## Why Integration Tests?
 
 The Google Drive API is complex and has many edge cases:
+
 - Different behavior for files vs folders
 - Special handling for Google Workspace files (Docs, Sheets, etc.)
 - Complex permission and sharing models
@@ -34,6 +36,7 @@ Follow the instructions in `TEST_FOLDER_SETUP.md` to create the required folder 
 Follow the instructions in `scripts/setup-test-token-manual.md` to get OAuth credentials.
 
 Quick version:
+
 1. Go to https://developers.google.com/oauthplayground/
 2. Click the gear icon (⚙️) and check "Use your own OAuth credentials"
 3. Enter your OAuth client ID and secret
@@ -52,14 +55,11 @@ Create this file in the project root (see `test-credentials.json.example`):
   "refresh_token": "1//04dX...",
   "client_id": "your-client-id.apps.googleusercontent.com",
   "client_secret": "your-client-secret",
-  "token_type": "Bearer", 
+  "token_type": "Bearer",
   "user_email": "your-test@gmail.com",
   "generated_at": "2025-01-25T10:00:00Z",
   "test_folder_id": "YOUR_GDRIVE_TEST_SUITE_FOLDER_ID",
-  "scopes": [
-    "https://www.googleapis.com/auth/drive",
-    "https://www.googleapis.com/auth/drive.file"
-  ]
+  "scopes": ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/drive.file"]
 }
 ```
 
@@ -83,12 +83,14 @@ npm run test:integration -- --reporter=verbose
 ## Test Structure
 
 ### Practical Integration Tests (`google-drive-practical.integration.test.ts`)
+
 - Works with pre-existing test folder structure
 - Idempotent tests that can run multiple times
 - Toggle-style operations (move A↔B, rename a↔b)
 - Lenient assertions focusing on correctness
 
 ### Legacy Test Files (for reference)
+
 - `google-drive.integration.test.ts` - Original approach
 - `google-drive-write-ops.integration.test.ts` - Creates test data
 - `google-drive-file-ops.integration.test.ts` - Documents missing features
@@ -96,10 +98,12 @@ npm run test:integration -- --reporter=verbose
 ## Cleanup
 
 The practical tests are designed to minimize cleanup needs:
+
 - Toggle operations restore files to original locations
 - Only the create folder test leaves behind new folders
 
 **Occasional cleanup:**
+
 1. Look for folders named `test-create-*` in TestOperations folder
 2. Delete old test folders if they accumulate
 3. Restore any files that got stuck in wrong locations due to test failures
@@ -120,6 +124,7 @@ The practical tests are designed to minimize cleanup needs:
 ## CI/CD Considerations
 
 For CI/CD, consider:
+
 1. Using a service account instead of OAuth tokens
 2. Creating a dedicated test Drive folder that gets cleaned periodically
 3. Running integration tests on a schedule, not every commit
@@ -128,19 +133,23 @@ For CI/CD, consider:
 ## Troubleshooting
 
 ### "Invalid Credentials" Error
+
 - Check that your OAuth client ID and secret are correct
 - Verify the refresh token is valid
 - Try regenerating tokens if needed
 
-### "Not Found" Errors  
+### "Not Found" Errors
+
 - Check the test account has access to the resources
 - Verify folder IDs are correct
 
 ### Rate Limiting
+
 - Tests run sequentially to avoid this
 - If you still hit limits, add delays between operations
 
 ### Manual Cleanup Burden
+
 - Until we add delete operations, you must manually clean test data
-- Search Drive for folders starting with `test-` 
+- Search Drive for folders starting with `test-`
 - Consider using a dedicated test account you can periodically wipe

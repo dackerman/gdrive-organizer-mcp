@@ -24,29 +24,34 @@ Create the following structure in your Google Drive:
 ## How to Create Test Structure
 
 ### 1. Create Main Test Folder
+
 - Go to Google Drive
 - Create a new folder named `GDrive-Test-Suite`
 - Note the folder ID from the URL (you'll need this)
 
 ### 2. Create Subfolders
+
 - Inside `GDrive-Test-Suite`, create:
   - `FolderA`
-  - `FolderB` 
+  - `FolderB`
   - `TestOperations`
 
 ### 3. Create Test Files
 
 #### In FolderA:
+
 - Upload a text file named `test-file-1.txt` (any content)
 - Create a Google Doc named `test-doc-1`
 - Create a Google Sheet named `test-sheet-1`
 
 #### In TestOperations:
+
 - Upload a text file named `file_a.txt`
 - Upload a text file named `move_me.txt`
 - Create a folder named `folder_a`
 
 #### In Root (GDrive-Test-Suite):
+
 - Upload a text file named `README.txt` with content like:
   ```
   This is a test file for the GDrive Organizer integration tests.
@@ -87,6 +92,7 @@ The tests are designed to be idempotent (can run multiple times):
 ## Quick Verification
 
 Run this checklist before running tests:
+
 - [ ] `GDrive-Test-Suite` folder exists
 - [ ] `FolderA` contains at least 3 files
 - [ ] `FolderB` exists (can be empty)

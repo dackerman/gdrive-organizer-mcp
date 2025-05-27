@@ -540,9 +540,9 @@ export async function parseRedirectApproval(request: Request, cookieSecret: stri
     path: '/',
     secure: true,
     httpOnly: true,
-    sameSite: 'lax'
+    sameSite: 'lax',
   })
-  
+
   const headers: Record<string, string> = {
     'Set-Cookie': setCookieHeader,
   }

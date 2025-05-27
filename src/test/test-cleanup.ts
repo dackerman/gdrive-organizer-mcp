@@ -2,7 +2,7 @@ import { GoogleDriveService } from '../services/google-drive'
 
 /**
  * Utility for cleaning up test data from Google Drive
- * 
+ *
  * Since we don't have a delete method in GoogleDriveService yet,
  * this provides guidance on manual cleanup
  */
@@ -34,12 +34,12 @@ export class TestCleanupManager {
       '🧹 Manual cleanup required:',
       '',
       'Please delete the following test resources from your Google Drive:',
-      ''
+      '',
     ]
 
     // Group by parent for easier navigation
     const byParent = new Map<string, TestResource[]>()
-    
+
     for (const resource of this.resources) {
       const parentId = resource.parentId || 'root'
       if (!byParent.has(parentId)) {
@@ -53,10 +53,10 @@ export class TestCleanupManager {
       if (parentId === 'root') {
         instructions.push('In My Drive root:')
       } else {
-        const parent = this.resources.find(r => r.id === parentId)
+        const parent = this.resources.find((r) => r.id === parentId)
         instructions.push(`In folder "${parent?.name || parentId}":`)
       }
-      
+
       for (const resource of resources) {
         instructions.push(`  - ${resource.type}: ${resource.name} (${resource.id})`)
       }
@@ -64,7 +64,7 @@ export class TestCleanupManager {
     }
 
     instructions.push('Tip: Search for folders starting with "test-" to find all test data')
-    
+
     return instructions
   }
 
@@ -99,20 +99,20 @@ export function createTestFolderName(prefix: string): string {
  */
 export async function findTestFolders(
   service: GoogleDriveService,
-  pattern = 'test-'
+  pattern = 'test-',
 ): Promise<{ id: string; name: string; createdTime: string }[]> {
   const result = await service.searchFiles({
     query: pattern,
     mimeType: 'application/vnd.google-apps.folder',
-    maxResults: 100
+    maxResults: 100,
   })
 
   return result.files
-    .filter(f => f.name.startsWith(pattern))
-    .map(f => ({
+    .filter((f) => f.name.startsWith(pattern))
+    .map((f) => ({
       id: f.id,
       name: f.name,
-      createdTime: f.createdTime
+      createdTime: f.createdTime,
     }))
     .sort((a, b) => b.createdTime.localeCompare(a.createdTime))
 }

@@ -11,6 +11,7 @@ node scripts/get-test-credentials.js
 ```
 
 The script will:
+
 1. Show you exactly what to do in OAuth Playground
 2. Validate your token
 3. Generate the `test-credentials.json` content for you
@@ -35,14 +36,17 @@ If you want tokens that last longer than 1 hour:
 In the left panel, you need to select these scopes:
 
 #### Google Drive API v3
+
 - ✅ `https://www.googleapis.com/auth/drive` (See, edit, create, and delete all files)
 - ✅ `https://www.googleapis.com/auth/drive.file` (See, edit, create, and delete only the specific files you use)
 
 #### Google OAuth2 API v2 (for user info)
+
 - ✅ `https://www.googleapis.com/auth/userinfo.email` (View your email address)
 - ✅ `https://www.googleapis.com/auth/userinfo.profile` (See your personal info)
 
 **Visual Guide:**
+
 ```
 ▼ Google Drive API v3
   ☑ ../auth/drive
@@ -68,6 +72,7 @@ In the left panel, you need to select these scopes:
 ### 5. Exchange Authorization Code
 
 After authorization:
+
 1. You'll be redirected back to OAuth Playground
 2. Click **"Exchange authorization code for tokens"**
 3. You'll see a response with your tokens
@@ -129,21 +134,24 @@ Create a file named `test-credentials.json` in the project root:
 ### Quick Refresh Process:
 
 1. Go back to OAuth Playground
-2. Click "Refresh access token" 
+2. Click "Refresh access token"
 3. Copy new token to test-credentials.json
 
 ## Troubleshooting
 
 ### "Invalid Credentials" Error
+
 - Token has expired (check generated_at time)
 - Token was copied incorrectly (extra spaces?)
 - Wrong scopes selected
 
-### "Insufficient Permission" Error  
+### "Insufficient Permission" Error
+
 - Missing required scopes
 - Need to re-authorize with all 4 scopes
 
 ### Can't Find Test Folder
+
 - Make sure you created the folder structure (see TEST_FOLDER_SETUP.md)
 - Check you're using the right Google account
 - Folder ID must be from the folder URL, not the folder name
@@ -151,6 +159,7 @@ Create a file named `test-credentials.json` in the project root:
 ## Security Reminders
 
 🔒 **NEVER commit test-credentials.json to git!**
+
 - It's in .gitignore, but double-check
 - Use a test account, not personal
 - Tokens are like passwords - keep them secret

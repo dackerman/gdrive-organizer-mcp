@@ -18,9 +18,9 @@ export class GoogleDriveTestFactory {
       'test-token',
       undefined, // refresh token
       undefined, // client id
-      undefined  // client secret
+      undefined, // client secret
     )
-    
+
     // Override the private apiClient property
     ;(service as any).apiClient = stub
 
@@ -94,7 +94,7 @@ export class GoogleDriveTestFactory {
           role: 'writer',
           emailAddress: 'john@example.com',
           displayName: 'John Doe',
-        }
+        },
       ],
     })
 
@@ -129,9 +129,9 @@ export class GoogleDriveTestFactory {
       'test-token',
       undefined, // refresh token
       undefined, // client id
-      undefined  // client secret
+      undefined, // client secret
     )
-    
+
     // Override the private apiClient property
     ;(service as any).apiClient = stub
 
@@ -150,16 +150,16 @@ export class GoogleDriveTestFactory {
       'test-token',
       undefined, // refresh token
       undefined, // client id
-      undefined  // client secret
+      undefined, // client secret
     )
-    
+
     // Override the private apiClient property
     ;(service as any).apiClient = stub
 
     // Create deep folder structure
     let currentParentId = 'root'
     const depth = 5
-    
+
     for (let i = 1; i <= depth; i++) {
       const folder = stub.addTestFile({
         id: `level-${i}-folder`,
@@ -167,14 +167,14 @@ export class GoogleDriveTestFactory {
         mimeType: GOOGLE_DRIVE_MIME_TYPES.FOLDER,
         parents: [currentParentId],
       })
-      
+
       // Add some files at each level
       stub.addTestFile({
         name: `file-at-level-${i}.txt`,
         mimeType: 'text/plain',
         parents: [folder.id],
       })
-      
+
       currentParentId = folder.id
     }
 
@@ -193,9 +193,9 @@ export class GoogleDriveTestFactory {
       'test-token',
       undefined, // refresh token
       undefined, // client id
-      undefined  // client secret
+      undefined, // client secret
     )
-    
+
     // Override the private apiClient property
     ;(service as any).apiClient = stub
 

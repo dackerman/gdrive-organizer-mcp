@@ -22,7 +22,7 @@ app.get('/authorize', async (c) => {
     client: await c.env.OAUTH_PROVIDER.lookupClient(clientId),
     server: {
       name: 'Google Drive Organizer',
-      description: 'This MCP Server provides tools to organize your Google Drive files.', 
+      description: 'This MCP Server provides tools to organize your Google Drive files.',
     },
     state: { oauthReqInfo },
   })
@@ -40,10 +40,10 @@ app.post('/authorize', async (c) => {
 async function redirectToGoogle(c: Context, oauthReqInfo: AuthRequest, headers: Record<string, string> = {}) {
   const scopes = buildScopeString()
   console.log('[GoogleHandler] Redirecting to Google with scopes:', scopes)
-  
+
   // Use secure state encoding with HMAC signature
   const secureState = await encodeSecureState(oauthReqInfo, c.env.COOKIE_ENCRYPTION_KEY)
-  
+
   return new Response(null, {
     status: 302,
     headers: {
@@ -74,7 +74,7 @@ app.get('/callback', async (c) => {
   if (!stateParam) {
     return c.text('Missing state parameter', 400)
   }
-  
+
   const oauthReqInfo = await decodeSecureState<AuthRequest>(stateParam, c.env.COOKIE_ENCRYPTION_KEY)
   if (!oauthReqInfo || !oauthReqInfo.clientId) {
     return c.text('Invalid or tampered state', 400)
@@ -102,7 +102,7 @@ app.get('/callback', async (c) => {
   console.log('[GoogleHandler] Got tokens:', {
     accessTokenLength: tokenData.accessToken.length,
     hasRefreshToken: !!tokenData.refreshToken,
-    expiresIn: tokenData.expiresIn
+    expiresIn: tokenData.expiresIn,
   })
 
   // Fetch the user info from Google
@@ -126,9 +126,7 @@ app.get('/callback', async (c) => {
   console.log('[GoogleHandler] Got user info:', { id, name, email })
 
   // Calculate token expiration time
-  const tokenExpiresAt = tokenData.expiresIn 
-    ? Date.now() + (tokenData.expiresIn * 1000) 
-    : undefined
+  const tokenExpiresAt = tokenData.expiresIn ? Date.now() + tokenData.expiresIn * 1000 : undefined
 
   // Return back to the MCP client a new token
   const { redirectTo } = await c.env.OAUTH_PROVIDER.completeAuthorization({

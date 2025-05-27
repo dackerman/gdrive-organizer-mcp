@@ -5,17 +5,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Development
+
 ```bash
 npm run dev          # Start local dev server on port 8788
 npm run start        # Alias for dev
 ```
 
 ### Deployment
+
 ```bash
 npm run deploy       # Deploy to Cloudflare Workers
 ```
 
 ### Type Checking
+
 ```bash
 npm run cf-typegen   # Generate Cloudflare types
 npm run type-check   # Run TypeScript type checking
@@ -24,6 +27,7 @@ npm run type-check   # Run TypeScript type checking
 ## Architecture Overview
 
 This is a **Google Drive Organizer MCP Server** deployed on Cloudflare Workers that combines:
+
 - **Model Context Protocol (MCP)** server functionality using `workers-mcp`
 - **Google OAuth authentication** via `@cloudflare/workers-oauth-provider`
 - **Durable Objects** for persistent state management
@@ -31,11 +35,13 @@ This is a **Google Drive Organizer MCP Server** deployed on Cloudflare Workers t
 ### Key Components
 
 1. **`src/index.ts`**: Main entry point containing:
+
    - `GDriveOrganizerMCP` class extending `DurableMCP` - handles MCP tool implementations
    - OAuth provider setup for client authentication
    - Route handlers for SSE connections and OAuth callbacks
 
 2. **`src/google-handler.ts`**: Google OAuth flow implementation:
+
    - Manages authentication with Google Cloud OAuth
    - Stores tokens in KV storage (`OAUTH_KV`)
    - Returns user info and access tokens
@@ -48,10 +54,12 @@ This is a **Google Drive Organizer MCP Server** deployed on Cloudflare Workers t
 ### Authentication Flow
 
 The server acts as both:
+
 - OAuth **Server** to MCP clients (Claude, Inspector, etc.)
 - OAuth **Client** to Google Cloud OAuth
 
 Required secrets:
+
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `COOKIE_ENCRYPTION_KEY`
@@ -126,6 +134,7 @@ The service automatically handles token refresh to prevent authentication errors
 4. **Persistent Sessions**: The refresh token is stored in the MCP token, allowing long-running sessions without re-authentication
 
 **Important Notes**:
+
 - The initial OAuth flow requests `access_type=offline` and `prompt=consent` to ensure a refresh token is obtained
 - Client credentials (ID and secret) are passed from the environment to the GoogleDriveService for token refresh
 - If token refresh fails (missing refresh token or credentials), the user must re-authenticate
@@ -133,6 +142,7 @@ The service automatically handles token refresh to prevent authentication errors
 ### Debugging
 
 All components include detailed logging prefixed with their module name:
+
 - `[GoogleHandler]` - OAuth flow
 - `[GDriveOrganizerMCP]` - MCP server initialization
 - `[GoogleDriveService]` - Drive API calls

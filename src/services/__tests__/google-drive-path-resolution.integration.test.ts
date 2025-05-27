@@ -15,10 +15,10 @@ describe('GoogleDriveService Path Resolution Integration Tests', () => {
       '', // We'll get a fresh access token via refresh
       credentials.refresh_token,
       credentials.client_id,
-      credentials.client_secret
+      credentials.client_secret,
     )
     cleanup = new TestCleanupManager(service)
-    
+
     // Create test root folder
     const result = await service.createFolder(testRootFolderName, 'root')
     testRootFolderId = result.id
@@ -34,7 +34,7 @@ describe('GoogleDriveService Path Resolution Integration Tests', () => {
       const folderName = 'Random files'
       const folder = await service.createFolder(folderName, testRootFolderId)
       cleanup.track({ id: folder.id, name: folderName, type: 'folder' })
-      
+
       // Test path resolution
       const resolvedId = await service.resolvePathToId(`/${testRootFolderName}/${folderName}`)
       expect(resolvedId).toBe(folder.id)
@@ -44,7 +44,7 @@ describe('GoogleDriveService Path Resolution Integration Tests', () => {
       const folderName = "Test's folder"
       const folder = await service.createFolder(folderName, testRootFolderId)
       cleanup.track({ id: folder.id, name: folderName, type: 'folder' })
-      
+
       // Test path resolution
       const resolvedId = await service.resolvePathToId(`/${testRootFolderName}/${folderName}`)
       expect(resolvedId).toBe(folder.id)
@@ -54,7 +54,7 @@ describe('GoogleDriveService Path Resolution Integration Tests', () => {
       const folderName = 'Test & folder'
       const folder = await service.createFolder(folderName, testRootFolderId)
       cleanup.track({ id: folder.id, name: folderName, type: 'folder' })
-      
+
       // Test path resolution
       const resolvedId = await service.resolvePathToId(`/${testRootFolderName}/${folderName}`)
       expect(resolvedId).toBe(folder.id)
@@ -64,7 +64,7 @@ describe('GoogleDriveService Path Resolution Integration Tests', () => {
       const folderName = 'Test (folder)'
       const folder = await service.createFolder(folderName, testRootFolderId)
       cleanup.track({ id: folder.id, name: folderName, type: 'folder' })
-      
+
       // Test path resolution
       const resolvedId = await service.resolvePathToId(`/${testRootFolderName}/${folderName}`)
       expect(resolvedId).toBe(folder.id)
@@ -74,7 +74,7 @@ describe('GoogleDriveService Path Resolution Integration Tests', () => {
       const folderName = 'Test - folder'
       const folder = await service.createFolder(folderName, testRootFolderId)
       cleanup.track({ id: folder.id, name: folderName, type: 'folder' })
-      
+
       // Test path resolution
       const resolvedId = await service.resolvePathToId(`/${testRootFolderName}/${folderName}`)
       expect(resolvedId).toBe(folder.id)
@@ -86,22 +86,22 @@ describe('GoogleDriveService Path Resolution Integration Tests', () => {
       // Create source folders
       const sourceFolder = await service.createFolder('Random files', testRootFolderId)
       cleanup.track({ id: sourceFolder.id, name: 'Random files', type: 'folder' })
-      
+
       const destParent = await service.createFolder('Housing Central', testRootFolderId)
       cleanup.track({ id: destParent.id, name: 'Housing Central', type: 'folder' })
-      
+
       // Move the folder
       await service.moveFolder(sourceFolder.id, destParent.id)
-      
+
       // Verify it moved
       const destContents = await service.listDirectory({ folderId: destParent.id })
-      const movedFolder = destContents.files.find(f => f.id === sourceFolder.id)
+      const movedFolder = destContents.files.find((f) => f.id === sourceFolder.id)
       expect(movedFolder).toBeDefined()
       expect(movedFolder?.name).toBe('Random files')
-      
+
       // Verify it's not in the original location
       const sourceContents = await service.listDirectory({ folderId: testRootFolderId })
-      const notInSource = sourceContents.files.find(f => f.id === sourceFolder.id)
+      const notInSource = sourceContents.files.find((f) => f.id === sourceFolder.id)
       expect(notInSource).toBeUndefined()
     })
   })

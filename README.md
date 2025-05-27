@@ -9,11 +9,13 @@ This server provides tools for exploring, analyzing, and reorganizing your Googl
 ### Available Tools
 
 - **`list_directory`** - Browse files and folders in your Google Drive
+
   - Lists up to 100 files per request
   - Shows file paths, sizes, and sharing status
   - Supports filtering by folder and shared files
 
 - **`read_file`** - Read file contents with smart handling
+
   - Supports pagination for large files (default 1MB chunks)
   - Automatically exports Google Docs to readable formats
   - Returns base64 encoding for binary files
@@ -26,6 +28,7 @@ This server provides tools for exploring, analyzing, and reorganizing your Googl
   - Returns same rich metadata as list_directory
 
 ### Coming Soon
+
 - **`create_folder`** - Create new folders for organization
 - **`execute_plan`** - Execute AI-generated organization plans
 - **`get_operation_status`** - Monitor long-running operations
@@ -43,6 +46,7 @@ This server provides tools for exploring, analyzing, and reorganizing your Googl
 #### 1. Create Google OAuth Client
 
 **Using Google Cloud Console:**
+
 1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 2. Create a new project or select existing
 3. Enable the Google Drive API:
@@ -91,10 +95,7 @@ Add to your Claude Desktop configuration (`Settings → Developer → Edit Confi
   "mcpServers": {
     "gdrive-organizer": {
       "command": "npx",
-      "args": [
-        "mcp-remote",
-        "https://your-worker-name.your-subdomain.workers.dev/sse"
-      ]
+      "args": ["mcp-remote", "https://your-worker-name.your-subdomain.workers.dev/sse"]
     }
   }
 }
@@ -128,19 +129,21 @@ Restart Claude Desktop. When you first use a Drive tool, you'll be prompted to a
 Once connected to Claude Desktop, you can interact with your Google Drive using natural language. Here are example conversations:
 
 **Exploring your Drive:**
+
 ```
 You: "What files do I have in my Drive?"
 Claude: I'll list your Google Drive files for you.
 [Uses list_directory tool]
 Claude: You have 47 files in your root folder, including:
 - Documents/ (folder, 12 files)
-- Photos/ (folder, 156 files) 
+- Photos/ (folder, 156 files)
 - Budget_2024.xlsx (21.5 KB, modified yesterday)
 - Meeting_Notes.docx (8.3 KB, modified 3 days ago)
 ...
 ```
 
 **Reading file contents:**
+
 ```
 You: "Can you read my meeting notes from last week?"
 Claude: I'll help you find and read your meeting notes.
@@ -156,6 +159,7 @@ Claude: Here are your meeting notes from December 15th:
 ```
 
 **Advanced search and analysis:**
+
 ```
 You: "Find all my budget-related spreadsheets and tell me what projects they cover"
 Claude: I'll search for budget spreadsheets in your Drive.
@@ -171,6 +175,7 @@ Would you like me to read any of these files to analyze the project details?
 ```
 
 **File organization (coming soon):**
+
 ```
 You: "My Documents folder is a mess. Can you help organize it by project?"
 Claude: I'll analyze your Documents folder and suggest an organization plan.
@@ -188,7 +193,7 @@ Claude: I've organized your 23 documents into these project folders:
 You can also use simple commands:
 
 - "List all files in my Drive root folder"
-- "Show me what's in my Documents folder"  
+- "Show me what's in my Documents folder"
 - "Read the contents of /Documents/project_plan.docx"
 - "Find all PDF files in my Drive"
 - "Search for files containing 'quarterly report'"
@@ -197,18 +202,23 @@ You can also use simple commands:
 ## Troubleshooting
 
 ### 403 Forbidden Error
+
 If you see "Google Drive API error: 403 Forbidden":
+
 1. Ensure Google Drive API is enabled in your Google Cloud Console
 2. Disconnect and reconnect the MCP server to refresh OAuth scopes
 3. Check that your OAuth client has the correct redirect URIs
 
 ### Authentication Issues
+
 - Make sure your `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are correctly set
 - For local development, ensure your `.dev.vars` file exists and has the correct values
 - Check Cloudflare Workers logs for detailed error messages
 
 ### NixOS Users
+
 If you encounter TLS certificate errors during local development:
+
 ```bash
 env SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt pnpm dev
 ```
@@ -223,6 +233,7 @@ This MCP server combines several key technologies:
 - **Google Drive API v3** - For file operations and organization
 
 The server acts as both:
+
 - An OAuth **server** to MCP clients (Claude, Inspector, etc.)
 - An OAuth **client** to Google's OAuth services
 

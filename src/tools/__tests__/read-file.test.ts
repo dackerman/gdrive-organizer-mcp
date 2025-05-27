@@ -11,7 +11,7 @@ describe('readFile tool', () => {
       mimeType: 'text/plain',
       size: 13,
       truncated: false,
-      encoding: 'utf-8'
+      encoding: 'utf-8',
     }
 
     const mockDriveService = createMockDriveService()
@@ -26,18 +26,18 @@ describe('readFile tool', () => {
     // Test the handler
     const result = await tool.handler({
       filePath: '/Documents/test.txt',
-      maxSize: 1024
+      maxSize: 1024,
     })
 
     // Verify path resolution was called
     expect(mockDriveService.resolvePathToId).toHaveBeenCalledWith('/Documents/test.txt')
-    
+
     // Verify service was called correctly with resolved ID
     expect(mockDriveService.readFile).toHaveBeenCalledWith({
       fileId: 'test-file-id',
       maxSize: 1024,
       startOffset: undefined,
-      endOffset: undefined
+      endOffset: undefined,
     })
 
     // Verify response format
@@ -45,9 +45,9 @@ describe('readFile tool', () => {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(mockResult, null, 2)
-        }
-      ]
+          text: JSON.stringify(mockResult, null, 2),
+        },
+      ],
     })
   })
 
@@ -58,7 +58,7 @@ describe('readFile tool', () => {
       mimeType: 'text/plain',
       size: 15,
       truncated: true,
-      encoding: 'utf-8'
+      encoding: 'utf-8',
     })
 
     const tool = createReadFileTool(mockDriveService)
@@ -69,7 +69,7 @@ describe('readFile tool', () => {
     await tool.handler({
       filePath: '/Documents/large-file.txt',
       startOffset: 100,
-      endOffset: 200
+      endOffset: 200,
     })
 
     expect(mockDriveService.resolvePathToId).toHaveBeenCalledWith('/Documents/large-file.txt')
@@ -77,7 +77,7 @@ describe('readFile tool', () => {
       fileId: 'test-file-id',
       startOffset: 100,
       endOffset: 200,
-      maxSize: undefined
+      maxSize: undefined,
     })
   })
 
@@ -87,7 +87,7 @@ describe('readFile tool', () => {
       mimeType: 'application/pdf',
       size: 12,
       truncated: false,
-      encoding: 'base64'
+      encoding: 'base64',
     }
 
     const mockDriveService = createMockDriveService()
@@ -99,7 +99,7 @@ describe('readFile tool', () => {
     vi.mocked(mockDriveService.resolvePathToId).mockResolvedValue('binary-file-id')
 
     const result = await tool.handler({
-      filePath: '/Documents/report.pdf'
+      filePath: '/Documents/report.pdf',
     })
 
     expect(mockDriveService.resolvePathToId).toHaveBeenCalledWith('/Documents/report.pdf')
@@ -107,7 +107,7 @@ describe('readFile tool', () => {
       fileId: 'binary-file-id',
       maxSize: undefined,
       startOffset: undefined,
-      endOffset: undefined
+      endOffset: undefined,
     })
 
     const parsed = JSON.parse(result.content[0].text)
@@ -121,9 +121,11 @@ describe('readFile tool', () => {
 
     const tool = createReadFileTool(mockDriveService)
 
-    await expect(tool.handler({
-      filePath: '/nonexistent/file.txt'
-    })).rejects.toThrow('File not found')
+    await expect(
+      tool.handler({
+        filePath: '/nonexistent/file.txt',
+      }),
+    ).rejects.toThrow('File not found')
   })
 
   it('should have correct metadata', () => {

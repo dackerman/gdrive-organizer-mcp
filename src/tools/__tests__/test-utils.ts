@@ -14,5 +14,5 @@ export const createMockDriveService = (): DriveService => ({
   resolvePathToId: vi.fn(),
   resolveIdToPath: vi.fn(),
   buildDirectoryTree: vi.fn(),
-  buildFileTree: vi.fn()
+  buildFileTree: vi.fn(),
 })

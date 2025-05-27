@@ -8,20 +8,10 @@
  */
 async function createHmac(data: string, secret: string): Promise<string> {
   const encoder = new TextEncoder()
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-  
-  const signature = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    encoder.encode(data)
-  )
-  
+  const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(data))
+
   // Convert ArrayBuffer to base64
   return btoa(String.fromCharCode(...new Uint8Array(signature)))
 }
@@ -41,7 +31,7 @@ export async function encodeSecureState<T>(state: T, secret: string): Promise<st
   const jsonData = JSON.stringify(state)
   const base64Data = btoa(jsonData)
   const signature = await createHmac(base64Data, secret)
-  
+
   // Combine data and signature
   return `${base64Data}.${signature}`
 }
@@ -49,24 +39,21 @@ export async function encodeSecureState<T>(state: T, secret: string): Promise<st
 /**
  * Decodes and verifies state with HMAC signature
  */
-export async function decodeSecureState<T>(
-  encodedState: string, 
-  secret: string
-): Promise<T | null> {
+export async function decodeSecureState<T>(encodedState: string, secret: string): Promise<T | null> {
   try {
     const [base64Data, signature] = encodedState.split('.')
     if (!base64Data || !signature) {
       console.error('[SecureState] Invalid state format')
       return null
     }
-    
+
     // Verify signature
     const isValid = await verifyHmac(base64Data, signature, secret)
     if (!isValid) {
       console.error('[SecureState] Invalid signature')
       return null
     }
-    
+
     // Decode data
     const jsonData = atob(base64Data)
     return JSON.parse(jsonData) as T

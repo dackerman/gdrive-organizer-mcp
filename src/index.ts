@@ -26,7 +26,7 @@ export class GDriveOrganizerMCP extends McpAgent<Env, {}, Props> {
       hasAccessToken: !!this.props.accessToken,
       hasRefreshToken: !!this.props.refreshToken,
       tokenExpiresAt: this.props.tokenExpiresAt,
-      tokenLength: this.props.accessToken?.length
+      tokenLength: this.props.accessToken?.length,
     })
 
     // Initialize the drive service with all token data
@@ -34,7 +34,7 @@ export class GDriveOrganizerMCP extends McpAgent<Env, {}, Props> {
       this.props.accessToken,
       this.props.refreshToken,
       this.env.GOOGLE_CLIENT_ID,
-      this.env.GOOGLE_CLIENT_SECRET
+      this.env.GOOGLE_CLIENT_SECRET,
     )
 
     const tools = [
@@ -42,9 +42,9 @@ export class GDriveOrganizerMCP extends McpAgent<Env, {}, Props> {
       createReadFileTool(this.driveService),
       createSearchFilesTool(this.driveService),
       createMoveFilesTool(this.driveService),
-      createCreateFoldersTool(this.driveService)
+      createCreateFoldersTool(this.driveService),
     ]
-    
+
     tools.forEach((tool) => {
       console.log('[GDriveOrganizerMCP] Registering tool:', tool.name)
       this.server.tool(tool.name, tool.description, tool.schema, tool.handler)

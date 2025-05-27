@@ -29,9 +29,9 @@ export function createMCPTextResponse(data: any) {
     content: [
       {
         type: 'text' as const,
-        text: JSON.stringify(data, null, 2)
-      }
-    ]
+        text: JSON.stringify(data, null, 2),
+      },
+    ],
   }
 }
 
@@ -53,19 +53,19 @@ export function mapDriveFileFields(file: DriveFile, requestedFields?: string[]):
       isFolder: file.isFolder,
       isShared: file.isShared,
       sharingStatus: file.sharingStatus,
-      folderDepth: file.folderDepth
+      folderDepth: file.folderDepth,
     }
   }
 
   // Map requested fields from DriveFile
   const result: Record<string, any> = {}
-  
-  requestedFields.forEach(field => {
+
+  requestedFields.forEach((field) => {
     if (field in file) {
       result[field] = file[field as keyof DriveFile]
     }
   })
-  
+
   return result
 }
 
@@ -76,7 +76,7 @@ export function createMCPErrorResponse(error: Error | string): MCPResponse {
   const errorMessage = error instanceof Error ? error.message : error
   return createMCPTextResponse({
     error: errorMessage,
-    success: false
+    success: false,
   })
 }
 
@@ -86,12 +86,12 @@ export function createMCPErrorResponse(error: Error | string): MCPResponse {
 export function createMCPSuccessResponse(data: any, message?: string): MCPResponse {
   const response: any = {
     success: true,
-    ...data
+    ...data,
   }
-  
+
   if (message) {
     response.message = message
   }
-  
+
   return createMCPTextResponse(response)
 }

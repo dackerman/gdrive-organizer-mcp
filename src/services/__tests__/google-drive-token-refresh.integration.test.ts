@@ -17,13 +17,13 @@ describe('GoogleDriveService Token Refresh Integration Tests', () => {
         '', // Empty access token
         credentials.refresh_token,
         credentials.client_id,
-        credentials.client_secret
+        credentials.client_secret,
       )
 
       // This should trigger a token refresh
       const result = await service.listDirectory({
         folderId: 'root',
-        pageSize: 1
+        pageSize: 1,
       })
 
       expect(result).toBeDefined()
@@ -36,13 +36,13 @@ describe('GoogleDriveService Token Refresh Integration Tests', () => {
         'invalid-expired-token-12345',
         credentials.refresh_token,
         credentials.client_id,
-        credentials.client_secret
+        credentials.client_secret,
       )
 
       // This should get a 401 and then refresh automatically
       const result = await service.listDirectory({
         folderId: 'root',
-        pageSize: 1
+        pageSize: 1,
       })
 
       expect(result).toBeDefined()
@@ -51,21 +51,16 @@ describe('GoogleDriveService Token Refresh Integration Tests', () => {
 
     it('should refresh token proactively when close to expiration', async () => {
       // Create API client directly to test token expiration logic
-      const apiClient = new GoogleDriveApiClient(
-        'test-token',
-        credentials.refresh_token,
-        credentials.client_id,
-        credentials.client_secret
-      )
+      const apiClient = new GoogleDriveApiClient('test-token', credentials.refresh_token, credentials.client_id, credentials.client_secret)
 
       // Set token to expire in 4 minutes (less than the 5-minute threshold)
       // @ts-ignore - accessing private property for testing
-      apiClient.tokenExpiresAt = Date.now() + (4 * 60 * 1000)
+      apiClient.tokenExpiresAt = Date.now() + 4 * 60 * 1000
 
       // This should trigger proactive refresh
       const response = await apiClient.filesList({
         q: "'root' in parents",
-        pageSize: 1
+        pageSize: 1,
       })
 
       expect(response).toBeDefined()
@@ -77,14 +72,14 @@ describe('GoogleDriveService Token Refresh Integration Tests', () => {
         'invalid-token',
         undefined, // No refresh token
         credentials.client_id,
-        credentials.client_secret
+        credentials.client_secret,
       )
 
       await expect(
         service.listDirectory({
           folderId: 'root',
-          pageSize: 1
-        })
+          pageSize: 1,
+        }),
       ).rejects.toThrow()
     })
 
@@ -93,37 +88,32 @@ describe('GoogleDriveService Token Refresh Integration Tests', () => {
         'invalid-token',
         credentials.refresh_token,
         undefined, // No client ID
-        undefined  // No client secret
+        undefined, // No client secret
       )
 
       await expect(
         service.listDirectory({
           folderId: 'root',
-          pageSize: 1
-        })
+          pageSize: 1,
+        }),
       ).rejects.toThrow('Cannot refresh token')
     })
 
     it('should perform multiple operations after token refresh', async () => {
       // Start with empty token to force refresh
-      const service = new GoogleDriveService(
-        '',
-        credentials.refresh_token,
-        credentials.client_id,
-        credentials.client_secret
-      )
+      const service = new GoogleDriveService('', credentials.refresh_token, credentials.client_id, credentials.client_secret)
 
       // First operation - triggers refresh
       const result1 = await service.listDirectory({
         folderId: 'root',
-        pageSize: 1
+        pageSize: 1,
       })
       expect(result1.files).toBeInstanceOf(Array)
 
       // Second operation - should use refreshed token
       const result2 = await service.searchFiles({
         query: 'test',
-        maxResults: 1
+        maxResults: 1,
       })
       expect(result2.files).toBeInstanceOf(Array)
 

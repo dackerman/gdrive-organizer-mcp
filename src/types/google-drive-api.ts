@@ -13,18 +13,18 @@ export interface GoogleDriveFile {
   id: string
   name: string
   mimeType: string
-  
+
   // File metadata
   size?: string // Size in bytes as string (API returns string for large files)
   createdTime?: string // RFC 3339 date-time
   modifiedTime?: string // RFC 3339 date-time
-  
+
   // Organization
   parents?: string[] // Array of parent folder IDs
   starred?: boolean
   trashed?: boolean
   explicitlyTrashed?: boolean
-  
+
   // Sharing and permissions
   shared?: boolean
   ownedByMe?: boolean
@@ -45,20 +45,20 @@ export interface GoogleDriveFile {
     emailAddress?: string
     displayName?: string
   }>
-  
+
   // Content
   webViewLink?: string
   webContentLink?: string
   iconLink?: string
   thumbnailLink?: string
-  
+
   // App properties
   appProperties?: Record<string, string>
   properties?: Record<string, string>
-  
+
   // Export links for Google Workspace files
   exportLinks?: Record<string, string>
-  
+
   // Additional metadata
   description?: string
   folderColorRgb?: string
@@ -75,7 +75,7 @@ export interface GoogleDriveFile {
     }
     indexableText?: string
   }
-  
+
   // Capabilities (what the user can do with the file)
   capabilities?: {
     canEdit?: boolean
@@ -119,7 +119,7 @@ export interface GoogleDriveFilesListParams {
   pageToken?: string
   fields?: string // Partial response fields
   orderBy?: string // Sort order
-  
+
   // Filtering
   corpora?: string // 'user', 'domain', 'drive', 'allDrives'
   driveId?: string
@@ -149,10 +149,10 @@ export interface GoogleDriveFilesGetParams {
  */
 export interface GoogleDriveFilesUpdateParams {
   fileId: string
-  
+
   // Request body - partial file metadata
   requestBody?: Partial<GoogleDriveFile>
-  
+
   // Query parameters
   addParents?: string // Comma-separated list of parent IDs to add
   removeParents?: string // Comma-separated list of parent IDs to remove
@@ -181,7 +181,7 @@ export interface GoogleDriveFilesCreateParams {
     appProperties?: Record<string, string>
     folderColorRgb?: string
   }
-  
+
   // Query parameters
   fields?: string
   ignoreDefaultVisibility?: boolean
@@ -224,7 +224,7 @@ export const GOOGLE_DRIVE_MIME_TYPES = {
   FORM: 'application/vnd.google-apps.form',
   SCRIPT: 'application/vnd.google-apps.script',
   SITE: 'application/vnd.google-apps.site',
-  
+
   // Export formats for Google Workspace files
   EXPORT_PDF: 'application/pdf',
   EXPORT_DOCX: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -237,7 +237,7 @@ export const GOOGLE_DRIVE_MIME_TYPES = {
   EXPORT_JPEG: 'image/jpeg',
   EXPORT_PNG: 'image/png',
   EXPORT_SVG: 'image/svg+xml',
-  
+
   // Common file types
   PDF: 'application/pdf',
   TEXT: 'text/plain',
@@ -245,14 +245,14 @@ export const GOOGLE_DRIVE_MIME_TYPES = {
   JSON: 'application/json',
   XML: 'application/xml',
   ZIP: 'application/zip',
-  
+
   // Image types
   JPEG: 'image/jpeg',
   PNG: 'image/png',
   GIF: 'image/gif',
   BMP: 'image/bmp',
   WEBP: 'image/webp',
-  
+
   // Document types
   DOC: 'application/msword',
   DOCX: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -278,10 +278,7 @@ export const GOOGLE_WORKSPACE_EXPORT_FORMATS: Record<string, string[]> = {
     GOOGLE_DRIVE_MIME_TYPES.EXPORT_CSV,
     GOOGLE_DRIVE_MIME_TYPES.EXPORT_TSV,
   ],
-  [GOOGLE_DRIVE_MIME_TYPES.PRESENTATION]: [
-    GOOGLE_DRIVE_MIME_TYPES.EXPORT_PDF,
-    GOOGLE_DRIVE_MIME_TYPES.EXPORT_PPTX,
-  ],
+  [GOOGLE_DRIVE_MIME_TYPES.PRESENTATION]: [GOOGLE_DRIVE_MIME_TYPES.EXPORT_PDF, GOOGLE_DRIVE_MIME_TYPES.EXPORT_PPTX],
   [GOOGLE_DRIVE_MIME_TYPES.DRAWING]: [
     GOOGLE_DRIVE_MIME_TYPES.EXPORT_PDF,
     GOOGLE_DRIVE_MIME_TYPES.EXPORT_JPEG,

@@ -18,7 +18,7 @@ Build a remote Model Context Protocol (MCP) server that enables AI assistants (l
 - **Base**: Cloudflare Workers with Google OAuth (using existing template)
 - **Authentication**: Google OAuth 2.0 with Drive API access
 - **Protocol**: Remote MCP server (not local)
-- **Required Scopes**: 
+- **Required Scopes**:
   - `https://www.googleapis.com/auth/drive`
   - `https://www.googleapis.com/auth/drive.file`
 
@@ -27,9 +27,11 @@ Build a remote Model Context Protocol (MCP) server that enables AI assistants (l
 ### 1. File System Exploration
 
 #### `show_directory_tree`
+
 Shows a tree of all directory paths starting from a given root.
 
 **Parameters:**
+
 ```typescript
 {
   rootPath?: string,     // Starting path (default: "/")
@@ -41,9 +43,11 @@ Shows a tree of all directory paths starting from a given root.
 Tree-formatted text showing all directory paths with visual hierarchy.
 
 #### `show_file_tree`
+
 Shows a tree of all file paths starting from a given root.
 
 **Parameters:**
+
 ```typescript
 {
   rootPath?: string,     // Starting path (default: "/")
@@ -56,9 +60,11 @@ Shows a tree of all file paths starting from a given root.
 Tree-formatted text showing all file paths with icons and directory structure.
 
 #### `list_directory`
+
 Lists files and folders in a specified directory (legacy - uses folder IDs).
 
 **Parameters:**
+
 ```typescript
 {
   folderId?: string,     // Google Drive folder ID (root if omitted)
@@ -68,21 +74,22 @@ Lists files and folders in a specified directory (legacy - uses folder IDs).
 ```
 
 **Returns:**
+
 ```typescript
 {
   files: Array<{
-    id: string,
-    name: string,
-    mimeType: string,
-    size?: number,        // bytes (not available for folders)
-    createdTime: string,  // ISO timestamp
-    modifiedTime: string,
-    parents: string[],    // parent folder IDs
-    path: string,         // human-readable path like "/Documents/Work"
-    isFolder: boolean,
-    isShared: boolean,
-    sharingStatus: 'private' | 'shared' | 'public',
-    folderDepth: number   // how nested (0 = root)
+    id: string
+    name: string
+    mimeType: string
+    size?: number // bytes (not available for folders)
+    createdTime: string // ISO timestamp
+    modifiedTime: string
+    parents: string[] // parent folder IDs
+    path: string // human-readable path like "/Documents/Work"
+    isFolder: boolean
+    isShared: boolean
+    sharingStatus: 'private' | 'shared' | 'public'
+    folderDepth: number // how nested (0 = root)
   }>
 }
 ```
@@ -90,9 +97,11 @@ Lists files and folders in a specified directory (legacy - uses folder IDs).
 ### 2. File Operations
 
 #### `read_file`
+
 Reads file content using file path.
 
 **Parameters:**
+
 ```typescript
 {
   filePath: string,      // Full path like "/Documents/report.txt"
@@ -103,6 +112,7 @@ Reads file content using file path.
 ```
 
 **Returns:**
+
 ```typescript
 {
   content: string,
@@ -114,9 +124,11 @@ Reads file content using file path.
 ```
 
 #### `search_files`
+
 Search for files across Google Drive (legacy - uses folder IDs).
 
 **Parameters:**
+
 ```typescript
 {
   query: string,         // search terms
@@ -132,19 +144,22 @@ Search for files across Google Drive (legacy - uses folder IDs).
 ### 3. Move Operations
 
 #### `move_files`
+
 Moves or renames files and folders using simple from/to path operations.
 
 **Parameters:**
+
 ```typescript
 {
   operations: Array<{
-    from: string,        // Source path like "/Documents/old_file.txt"
-    to: string           // Destination path like "/Projects/new_file.txt"
+    from: string // Source path like "/Documents/old_file.txt"
+    to: string // Destination path like "/Projects/new_file.txt"
   }>
 }
 ```
 
 **Examples:**
+
 ```typescript
 // Move a file to different folder
 { from: "/Documents/report.pdf", to: "/Projects/report.pdf" }
@@ -160,6 +175,7 @@ Moves or renames files and folders using simple from/to path operations.
 ```
 
 **Returns:**
+
 ```typescript
 {
   success: boolean,
@@ -181,26 +197,33 @@ Moves or renames files and folders using simple from/to path operations.
 ## Data Structures
 
 ### Path Format
+
 All paths use Unix-style forward slashes starting from the Google Drive root:
+
 - Root: `/`
 - File: `/Documents/report.pdf`
 - Nested folder: `/Projects/2024/Budget/`
 - Folder in root: `/Archives`
 
 ### Move Operations
+
 Simple from/to path pairs that handle both moves and renames:
+
 - **Move**: Different parent directories (`/Downloads/file.txt` → `/Documents/file.txt`)
 - **Rename**: Same parent directory (`/Documents/draft.txt` → `/Documents/final.txt`)
 - **Move + Rename**: Different parent + different name (`/Downloads/temp.xlsx` → `/Work/budget.xlsx`)
 
 ### File Discovery
+
 Tree tools provide comprehensive views:
+
 - `show_directory_tree`: All folder paths for navigation
 - `show_file_tree`: All file paths with visual icons and structure
 
 ## Implementation Details
 
 ### Operation Execution
+
 - Execute operations sequentially to avoid conflicts
 - For each operation, verify source still exists before attempting
 - Log each completed operation immediately
@@ -208,12 +231,14 @@ Tree tools provide comprehensive views:
 - Update progress after each operation
 
 ### Error Handling
+
 - **File not found**: Skip operation, log warning, continue
 - **Permission denied**: Skip operation, log error, continue
 - **Network timeout**: Retry up to 3 times, then fail operation
 - **Rate limiting**: Implement exponential backoff
 
 ### Google Drive API Considerations
+
 - Use batch requests where possible to improve performance
 - Respect rate limits (1000 requests per 100 seconds per user)
 - Handle partial failures in batch operations gracefully
@@ -221,9 +246,11 @@ Tree tools provide comprehensive views:
 ## History and Audit Trail
 
 ### Log File Location
+
 Create and maintain `/Drive Organizer History.jsonl` in the root of the user's Google Drive.
 
 ### Log Entry Format
+
 Each line is a JSON object:
 
 ```json
@@ -234,6 +261,7 @@ Each line is a JSON object:
 ```
 
 ### Log Entry Types
+
 - `plan_started`: New plan execution began
 - `operation_completed`: Individual operation succeeded
 - `operation_failed`: Individual operation failed
@@ -253,21 +281,25 @@ Each line is a JSON object:
 ## Technical Requirements
 
 ### Google Drive API Setup
+
 - Enable Google Drive API in Google Cloud Console
 - Set up OAuth 2.0 credentials for web application
 - Configure authorized redirect URIs for Cloudflare Workers domain
 
 ### Required Dependencies
+
 - Google APIs Client Library
 - OAuth 2.0 handling
 - JSON Lines (JSONL) parsing/writing for log files
 
 ### Rate Limiting and Performance
+
 - Implement request batching for multiple file operations
 - Add retry logic with exponential backoff
 - Monitor quota usage and provide warnings
 
 ### Security Considerations
+
 - Validate all file paths and IDs before operations
 - Ensure operations don't escape user's Drive scope
 - Never expose raw Google API credentials
@@ -276,16 +308,19 @@ Each line is a JSON object:
 ## Testing Strategy
 
 ### Unit Tests
+
 - Individual tool functions
 - Operation validation logic
 - Error handling scenarios
 
 ### Integration Tests
+
 - End-to-end plan execution
 - Google Drive API integration
 - Authentication flow
 
 ### Test Data
+
 - Create test Drive folder structure
 - Test with various file types and sizes
 - Test edge cases (deeply nested folders, special characters in names)
@@ -293,12 +328,14 @@ Each line is a JSON object:
 ## Future Enhancements
 
 ### Phase 2 Features
+
 - Duplicate file detection and removal
 - Smart naming convention enforcement
 - Photo organization by date/metadata
 - Integration with Google Photos for media files
 
 ### Performance Optimizations
+
 - Parallel operation execution (where safe)
 - Caching of folder structures
 - Incremental organization updates

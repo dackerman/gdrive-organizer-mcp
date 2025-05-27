@@ -127,7 +127,7 @@ export class DrivePathUtils {
   static getParentPath(path: string): string {
     const normalized = this.normalizePath(path)
     if (normalized === '/') return '/'
-    
+
     const lastSlash = normalized.lastIndexOf('/')
     return lastSlash === 0 ? '/' : normalized.substring(0, lastSlash)
   }
@@ -138,7 +138,7 @@ export class DrivePathUtils {
   static getNameFromPath(path: string): string {
     const normalized = this.normalizePath(path)
     if (normalized === '/') return ''
-    
+
     const lastSlash = normalized.lastIndexOf('/')
     return normalized.substring(lastSlash + 1)
   }
@@ -149,15 +149,15 @@ export class DrivePathUtils {
   static splitPath(path: string): string[] {
     const normalized = this.normalizePath(path)
     if (normalized === '/') return []
-    
-    return normalized.split('/').filter(segment => segment.length > 0)
+
+    return normalized.split('/').filter((segment) => segment.length > 0)
   }
 
   /**
    * Join path segments
    */
   static joinPath(...segments: string[]): string {
-    const filtered = segments.filter(s => s && s !== '/')
+    const filtered = segments.filter((s) => s && s !== '/')
     if (filtered.length === 0) return '/'
     return '/' + filtered.join('/')
   }
@@ -187,5 +187,5 @@ export const DRIVE_MIME_TYPES = {
   IMAGE_PNG: 'image/png',
   VIDEO_MP4: 'video/mp4',
   TEXT_PLAIN: 'text/plain',
-  TEXT_HTML: 'text/html'
+  TEXT_HTML: 'text/html',
 } as const

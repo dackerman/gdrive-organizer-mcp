@@ -20,23 +20,23 @@ export function getUpstreamAuthorizeUrl({
   state,
   hostedDomain,
 }: {
-  upstreamUrl: string;
-  clientId: string;
-  scope: string;
-  redirectUri: string;
-  state?: string;
-  hostedDomain?: string;
+  upstreamUrl: string
+  clientId: string
+  scope: string
+  redirectUri: string
+  state?: string
+  hostedDomain?: string
 }) {
-  const upstream = new URL(upstreamUrl);
-  upstream.searchParams.set("client_id", clientId);
-  upstream.searchParams.set("redirect_uri", redirectUri);
-  upstream.searchParams.set("scope", scope);
-  upstream.searchParams.set("response_type", OAUTH_PARAMS.RESPONSE_TYPE);
-  upstream.searchParams.set("access_type", OAUTH_PARAMS.ACCESS_TYPE); // Request refresh token
-  upstream.searchParams.set("prompt", OAUTH_PARAMS.PROMPT); // Force consent to ensure refresh token
-  if (state) upstream.searchParams.set("state", state);
-  if (hostedDomain) upstream.searchParams.set("hd", hostedDomain);
-  return upstream.href;
+  const upstream = new URL(upstreamUrl)
+  upstream.searchParams.set('client_id', clientId)
+  upstream.searchParams.set('redirect_uri', redirectUri)
+  upstream.searchParams.set('scope', scope)
+  upstream.searchParams.set('response_type', OAUTH_PARAMS.RESPONSE_TYPE)
+  upstream.searchParams.set('access_type', OAUTH_PARAMS.ACCESS_TYPE) // Request refresh token
+  upstream.searchParams.set('prompt', OAUTH_PARAMS.PROMPT) // Force consent to ensure refresh token
+  if (state) upstream.searchParams.set('state', state)
+  if (hostedDomain) upstream.searchParams.set('hd', hostedDomain)
+  return upstream.href
 }
 
 /**
@@ -60,35 +60,35 @@ export async function fetchUpstreamAuthToken({
   upstreamUrl,
   grantType,
 }: {
-  code: string | undefined;
-  upstreamUrl: string;
-  clientSecret: string;
-  redirectUri: string;
-  clientId: string;
-  grantType: string;
+  code: string | undefined
+  upstreamUrl: string
+  clientSecret: string
+  redirectUri: string
+  clientId: string
+  grantType: string
 }): Promise<[{ accessToken: string; refreshToken?: string; expiresIn?: number }, null] | [null, Response]> {
   if (!code) {
-    return [null, new Response("Missing code", { status: 400 })];
+    return [null, new Response('Missing code', { status: 400 })]
   }
 
   const resp = await fetch(upstreamUrl, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
+      'Content-Type': 'application/x-www-form-urlencoded',
     },
-    body: new URLSearchParams({ 
-      client_id: clientId, 
-      client_secret: clientSecret, 
-      code, 
-      redirect_uri: redirectUri, 
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      redirect_uri: redirectUri,
       grant_type: grantType,
       access_type: OAUTH_PARAMS.ACCESS_TYPE, // Request refresh token
-      prompt: OAUTH_PARAMS.PROMPT // Force consent to ensure refresh token is returned
+      prompt: OAUTH_PARAMS.PROMPT, // Force consent to ensure refresh token is returned
     }).toString(),
-  });
+  })
   if (!resp.ok) {
-    console.log(await resp.text());
-    return [null, new Response("Failed to fetch access token", { status: 500 })];
+    console.log(await resp.text())
+    return [null, new Response('Failed to fetch access token', { status: 500 })]
   }
 
   interface authTokenResponse {
@@ -102,11 +102,14 @@ export async function fetchUpstreamAuthToken({
   if (!body.access_token) {
     return [null, new Response('Missing access token', { status: 400 })]
   }
-  return [{
-    accessToken: body.access_token,
-    refreshToken: body.refresh_token,
-    expiresIn: body.expires_in
-  }, null]
+  return [
+    {
+      accessToken: body.access_token,
+      refreshToken: body.refresh_token,
+      expiresIn: body.expires_in,
+    },
+    null,
+  ]
 }
 
 // Context from the auth process, encrypted & stored in the auth token

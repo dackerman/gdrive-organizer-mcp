@@ -6,9 +6,10 @@ we don't need so many real integration tests to verify its correctness (becuause
 Then, the business logic will call and combine these endpoints as needed, and we can test it by making a stub version of Google drive so the tests are fast and deterministic. We can make sure our logic works without needing the complexity of hitting a real API.
 
 For example, we should just expose the following Google Drive API v3 endpoints:
-* list
-* get
-* update
+
+- list
+- get
+- update
 
 We should also just define a good typescript type for File which matches the API so we can easily work with it in business logic code.
 

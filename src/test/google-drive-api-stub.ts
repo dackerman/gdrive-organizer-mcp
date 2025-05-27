@@ -25,14 +25,14 @@ interface FileStore {
 export class GoogleDriveApiStub extends GoogleDriveApiClient {
   private fileStore: FileStore = {}
   private nextFileId = 1
-  
+
   // Track API calls for assertions
   public apiCalls: Array<{ method: string; params: any }> = []
 
   constructor() {
     // Pass dummy tokens since we won't use them
     super('stub-token', 'stub-refresh-token', 'stub-client-id', 'stub-client-secret')
-    
+
     // Initialize with root folder
     this.fileStore['root'] = {
       id: 'root',
@@ -62,7 +62,7 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
   addTestFile(file: Partial<GoogleDriveFile> & { name: string }): GoogleDriveFile {
     const id = file.id || `test-file-${this.nextFileId++}`
     const now = new Date().toISOString()
-    
+
     const fullFile: GoogleDriveFile = {
       id,
       mimeType: file.mimeType || 'text/plain',
@@ -74,7 +74,7 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
       trashed: file.trashed || false,
       ...file,
     }
-    
+
     this.fileStore[id] = fullFile
     return fullFile
   }
@@ -91,18 +91,12 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
    */
   async filesList(params: GoogleDriveFilesListParams = {}): Promise<GoogleDriveFilesListResponse> {
     this.apiCalls.push({ method: 'filesList', params })
-    
-    const {
-      q,
-      pageSize = 100,
-      pageToken,
-      orderBy = 'folder,name',
-      fields,
-    } = params
+
+    const { q, pageSize = 100, pageToken, orderBy = 'folder,name', fields } = params
 
     // Parse the query
-    let files = Object.values(this.fileStore).filter(f => !f.trashed)
-    
+    let files = Object.values(this.fileStore).filter((f) => !f.trashed)
+
     if (q) {
       files = this.applyQuery(files, q)
     }
@@ -131,7 +125,7 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
    */
   async filesGet(params: GoogleDriveFilesGetParams): Promise<GoogleDriveFile> {
     this.apiCalls.push({ method: 'filesGet', params })
-    
+
     const file = this.fileStore[params.fileId]
     if (!file) {
       throw new Error(`File not found: ${params.fileId}`)
@@ -146,7 +140,7 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
    */
   async filesUpdate(params: GoogleDriveFilesUpdateParams): Promise<GoogleDriveFile> {
     this.apiCalls.push({ method: 'filesUpdate', params })
-    
+
     const file = this.fileStore[params.fileId]
     if (!file) {
       throw new Error(`File not found: ${params.fileId}`)
@@ -155,15 +149,15 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
     // Handle parent changes
     if (params.addParents || params.removeParents) {
       const currentParents = new Set(file.parents || [])
-      
+
       if (params.removeParents) {
-        params.removeParents.split(',').forEach(p => currentParents.delete(p))
+        params.removeParents.split(',').forEach((p) => currentParents.delete(p))
       }
-      
+
       if (params.addParents) {
-        params.addParents.split(',').forEach(p => currentParents.add(p))
+        params.addParents.split(',').forEach((p) => currentParents.add(p))
       }
-      
+
       file.parents = Array.from(currentParents)
     }
 
@@ -173,7 +167,7 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
     }
 
     file.modifiedTime = new Date().toISOString()
-    
+
     return file
   }
 
@@ -182,10 +176,10 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
    */
   async filesCreate(params: GoogleDriveFilesCreateParams): Promise<GoogleDriveFile> {
     this.apiCalls.push({ method: 'filesCreate', params })
-    
+
     const id = `file-${this.nextFileId++}`
     const now = new Date().toISOString()
-    
+
     const file: GoogleDriveFile = {
       id,
       mimeType: params.requestBody.mimeType || 'application/octet-stream',
@@ -196,7 +190,7 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
       shared: false,
       trashed: false,
     }
-    
+
     this.fileStore[id] = file
     return file
   }
@@ -206,11 +200,11 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
    */
   async filesDelete(params: GoogleDriveFilesDeleteParams): Promise<void> {
     this.apiCalls.push({ method: 'filesDelete', params })
-    
+
     if (!this.fileStore[params.fileId]) {
       throw new Error(`File not found: ${params.fileId}`)
     }
-    
+
     delete this.fileStore[params.fileId]
   }
 
@@ -219,7 +213,7 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
    */
   async filesDownload(fileId: string, options: { alt?: 'media' } = {}): Promise<Response> {
     this.apiCalls.push({ method: 'filesDownload', params: { fileId, options } })
-    
+
     const file = this.fileStore[fileId]
     if (!file) {
       throw new Error(`File not found: ${fileId}`)
@@ -251,7 +245,7 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
    */
   async filesExport(params: GoogleDriveFilesExportParams): Promise<Response> {
     this.apiCalls.push({ method: 'filesExport', params })
-    
+
     const file = this.fileStore[params.fileId]
     if (!file) {
       throw new Error(`File not found: ${params.fileId}`)
@@ -259,7 +253,7 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
 
     // Simulate export content
     let content = ''
-    
+
     if (file.mimeType === GOOGLE_DRIVE_MIME_TYPES.DOCUMENT) {
       if (params.mimeType === 'text/plain') {
         content = `Text export of document: ${file.name}`
@@ -300,44 +294,37 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
     // Filter by parent
     const parentMatches = [...query.matchAll(patterns.inParents)]
     if (parentMatches.length > 0) {
-      const parentIds = parentMatches.map(m => m[1])
-      result = result.filter(f => 
-        f.parents?.some(p => parentIds.includes(p))
-      )
+      const parentIds = parentMatches.map((m) => m[1])
+      result = result.filter((f) => f.parents?.some((p) => parentIds.includes(p)))
     }
 
     // Filter by name contains
     const nameContainsMatches = [...query.matchAll(patterns.nameContains)]
     if (nameContainsMatches.length > 0) {
-      const searchTerms = nameContainsMatches.map(m => m[1].toLowerCase())
-      result = result.filter(f =>
-        searchTerms.some(term => f.name.toLowerCase().includes(term))
-      )
+      const searchTerms = nameContainsMatches.map((m) => m[1].toLowerCase())
+      result = result.filter((f) => searchTerms.some((term) => f.name.toLowerCase().includes(term)))
     }
 
     // Filter by name equals
     const nameEqualsMatches = [...query.matchAll(patterns.nameEquals)]
     if (nameEqualsMatches.length > 0) {
-      const names = nameEqualsMatches.map(m => m[1])
-      result = result.filter(f => names.includes(f.name))
+      const names = nameEqualsMatches.map((m) => m[1])
+      result = result.filter((f) => names.includes(f.name))
     }
 
     // Filter by mime type
     const mimeTypeMatches = [...query.matchAll(patterns.mimeType)]
     if (mimeTypeMatches.length > 0) {
-      const mimeTypes = mimeTypeMatches.map(m => m[1])
-      result = result.filter(f => mimeTypes.includes(f.mimeType))
+      const mimeTypes = mimeTypeMatches.map((m) => m[1])
+      result = result.filter((f) => mimeTypes.includes(f.mimeType))
     }
 
     // Filter by full text
     const fullTextMatches = [...query.matchAll(patterns.fullTextContains)]
     if (fullTextMatches.length > 0) {
-      const searchTerms = fullTextMatches.map(m => m[1].toLowerCase())
-      result = result.filter(f =>
-        searchTerms.some(term => 
-          f.name.toLowerCase().includes(term) ||
-          f.description?.toLowerCase().includes(term)
-        )
+      const searchTerms = fullTextMatches.map((m) => m[1].toLowerCase())
+      result = result.filter((f) =>
+        searchTerms.some((term) => f.name.toLowerCase().includes(term) || f.description?.toLowerCase().includes(term)),
       )
     }
 
@@ -345,7 +332,7 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
     const trashedMatch = patterns.trashed.exec(query)
     if (trashedMatch) {
       const trashedValue = trashedMatch[1] === 'true'
-      result = result.filter(f => f.trashed === trashedValue)
+      result = result.filter((f) => f.trashed === trashedValue)
     }
 
     // Filter by sharedWithMe
@@ -353,10 +340,10 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
     if (sharedMatch) {
       const sharedValue = sharedMatch[1] === 'true'
       if (sharedValue) {
-        result = result.filter(f => f.shared && !f.ownedByMe)
+        result = result.filter((f) => f.shared && !f.ownedByMe)
       } else {
         // sharedWithMe = false means exclude files shared by others
-        result = result.filter(f => f.ownedByMe || !f.shared)
+        result = result.filter((f) => f.ownedByMe || !f.shared)
       }
     }
 
@@ -367,22 +354,22 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
    * Apply ordering to files
    */
   private applyOrdering(files: GoogleDriveFile[], orderBy: string): GoogleDriveFile[] {
-    const orders = orderBy.split(',').map(o => o.trim())
-    
+    const orders = orderBy.split(',').map((o) => o.trim())
+
     return files.sort((a, b) => {
       for (const order of orders) {
         const [field, direction] = order.split(' ')
         const desc = direction === 'desc'
-        
+
         let aVal: any = a[field as keyof GoogleDriveFile]
         let bVal: any = b[field as keyof GoogleDriveFile]
-        
+
         // Special handling for 'folder' ordering
         if (field === 'folder') {
           aVal = a.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER ? 0 : 1
           bVal = b.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER ? 0 : 1
         }
-        
+
         if (aVal < bVal) return desc ? 1 : -1
         if (aVal > bVal) return desc ? -1 : 1
       }
@@ -399,11 +386,11 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
       // Extract fields within files(...) parentheses
       const filesMatch = fields.match(/files\(([^)]+)\)/)
       if (filesMatch) {
-        const innerFields = filesMatch[1].split(',').map(f => f.trim())
+        const innerFields = filesMatch[1].split(',').map((f) => f.trim())
         const requestedFields = new Set(innerFields)
         requestedFields.add('id') // Always include id
-        
-        return files.map(file => {
+
+        return files.map((file) => {
           const filtered: any = {}
           for (const field of requestedFields) {
             if (field in file) {
@@ -414,7 +401,7 @@ export class GoogleDriveApiStub extends GoogleDriveApiClient {
         })
       }
     }
-    
+
     // If no specific field mask or not in expected format, return all fields
     return files
   }

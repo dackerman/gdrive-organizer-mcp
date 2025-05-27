@@ -20,7 +20,7 @@ describe('searchFiles tool', () => {
           isFolder: false,
           isShared: false,
           sharingStatus: 'private',
-          folderDepth: 0
+          folderDepth: 0,
         },
         {
           id: '456',
@@ -34,9 +34,9 @@ describe('searchFiles tool', () => {
           isFolder: false,
           isShared: true,
           sharingStatus: 'shared',
-          folderDepth: 1
-        }
-      ]
+          folderDepth: 1,
+        },
+      ],
     }
 
     const mockDriveService = createMockDriveService()
@@ -48,13 +48,13 @@ describe('searchFiles tool', () => {
     // Test the handler
     const result = await tool.handler({
       query: 'report',
-      maxResults: 50
+      maxResults: 50,
     })
 
     // Verify service was called correctly
     expect(mockDriveService.searchFiles).toHaveBeenCalledWith({
       query: 'report',
-      maxResults: 50
+      maxResults: 50,
     })
 
     // Verify response format
@@ -69,7 +69,7 @@ describe('searchFiles tool', () => {
           size: 2048,
           modifiedTime: '2025-01-15T11:00:00Z',
           isFolder: false,
-          isShared: false
+          isShared: false,
         },
         {
           id: '456',
@@ -79,10 +79,10 @@ describe('searchFiles tool', () => {
           size: 5120,
           modifiedTime: '2025-01-12T10:00:00Z',
           isFolder: false,
-          isShared: true
-        }
+          isShared: true,
+        },
       ],
-      totalResults: 2
+      totalResults: 2,
     })
   })
 
@@ -97,7 +97,7 @@ describe('searchFiles tool', () => {
       folderId: 'finance-folder-id',
       mimeType: 'application/vnd.google-apps.spreadsheet',
       namePattern: '^budget_\\d{4}',
-      maxResults: 100
+      maxResults: 100,
     })
 
     expect(mockDriveService.searchFiles).toHaveBeenCalledWith({
@@ -105,7 +105,7 @@ describe('searchFiles tool', () => {
       folderId: 'finance-folder-id',
       mimeType: 'application/vnd.google-apps.spreadsheet',
       namePattern: '^budget_\\d{4}',
-      maxResults: 100
+      maxResults: 100,
     })
   })
 
@@ -117,7 +117,7 @@ describe('searchFiles tool', () => {
 
     const result = await tool.handler({
       query: 'nonexistent',
-      maxResults: 50
+      maxResults: 50,
     })
 
     const parsed = JSON.parse(result.content[0].text)
@@ -130,10 +130,12 @@ describe('searchFiles tool', () => {
 
     const tool = createSearchFilesTool(mockDriveService)
 
-    await expect(tool.handler({
-      query: 'test',
-      maxResults: 50
-    })).rejects.toThrow('Search failed')
+    await expect(
+      tool.handler({
+        query: 'test',
+        maxResults: 50,
+      }),
+    ).rejects.toThrow('Search failed')
   })
 
   it('should have correct metadata', () => {

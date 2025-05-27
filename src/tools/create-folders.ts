@@ -5,17 +5,20 @@ import { DrivePathUtils } from '../drive-query-utils'
 
 // Define the schema for create_folders parameters
 export const createFoldersSchema = z.object({
-  paths: z.array(z.string().min(1)).min(1).describe(
-    'Array of folder paths to create. ' +
-    'Paths must be absolute (starting with "/"). ' +
-    'Parent directories will be created automatically if they don\'t exist. ' +
-    'Examples: ["/Documents/Projects/2024", "/Archive/Old Files", "/Temp"]'
-  ),
-  
-  skipExisting: z.boolean().optional().describe(
-    'If true (default), silently skip folders that already exist. ' +
-    'If false, report existing folders as errors.'
-  )
+  paths: z
+    .array(z.string().min(1))
+    .min(1)
+    .describe(
+      'Array of folder paths to create. ' +
+        'Paths must be absolute (starting with "/"). ' +
+        "Parent directories will be created automatically if they don't exist. " +
+        'Examples: ["/Documents/Projects/2024", "/Archive/Old Files", "/Temp"]',
+    ),
+
+  skipExisting: z
+    .boolean()
+    .optional()
+    .describe('If true (default), silently skip folders that already exist. ' + 'If false, report existing folders as errors.'),
 })
 
 // Type inference from the schema
@@ -46,12 +49,12 @@ export interface CreateFoldersResult {
 export function createCreateFoldersTool(driveService: DriveService) {
   // Helper to ensure parent directories exist
   async function ensureParentPath(path: string): Promise<void> {
-    const parts = path.split('/').filter(p => p)
+    const parts = path.split('/').filter((p) => p)
     let currentPath = ''
-    
+
     for (let i = 0; i < parts.length - 1; i++) {
       currentPath += '/' + parts[i]
-      
+
       try {
         // Try to resolve the path - if it fails, the folder doesn't exist
         await driveService.resolvePathToId(currentPath)
@@ -60,55 +63,55 @@ export function createCreateFoldersTool(driveService: DriveService) {
         const parentPath = DrivePathUtils.getParentPath(currentPath)
         const parentId = await driveService.resolvePathToId(parentPath)
         const folderName = parts[i]
-        
+
         await driveService.createFolder(folderName, parentId)
         console.log(`[createFolders tool] Created parent directory: ${currentPath}`)
       }
     }
   }
-  
+
   // The actual handler function
   async function createFolders(params: CreateFoldersParams) {
     // Validate parameters
     const validated = createFoldersSchema.parse(params)
     const skipExisting = validated.skipExisting ?? true // Default to true
-    
+
     console.log('[createFolders tool] Called with:', {
       pathCount: validated.paths.length,
-      skipExisting
+      skipExisting,
     })
-    
+
     const results: CreateFolderResult[] = []
     let foldersCreated = 0
     let foldersExisted = 0
     let failures = 0
-    
+
     // Process each path
     for (const path of validated.paths) {
       console.log(`[createFolders tool] Processing path: ${path}`)
-      
+
       try {
         // Normalize path
         const normalizedPath = DrivePathUtils.normalizePath(path)
-        
+
         // Check if folder already exists
         let exists = false
         let existingId: string | undefined
-        
+
         try {
           existingId = await driveService.resolvePathToId(normalizedPath)
           exists = true
         } catch (error) {
           // Folder doesn't exist, which is what we want
         }
-        
+
         if (exists) {
           if (skipExisting) {
             results.push({
               path: normalizedPath,
               success: true,
               id: existingId,
-              created: false
+              created: false,
             })
             foldersExisted++
             console.log(`[createFolders tool] Folder already exists: ${normalizedPath}`)
@@ -117,51 +120,50 @@ export function createCreateFoldersTool(driveService: DriveService) {
               path: normalizedPath,
               success: false,
               error: 'Folder already exists',
-              created: false
+              created: false,
             })
             failures++
           }
           continue
         }
-        
+
         // Ensure parent directories exist
         await ensureParentPath(normalizedPath)
-        
+
         // Create the folder
         const folderName = DrivePathUtils.getNameFromPath(normalizedPath)
         const parentPath = DrivePathUtils.getParentPath(normalizedPath)
         const parentId = await driveService.resolvePathToId(parentPath)
-        
+
         const result = await driveService.createFolder(folderName, parentId)
-        
+
         results.push({
           path: normalizedPath,
           success: true,
           id: result.id,
-          created: true
+          created: true,
         })
         foldersCreated++
-        
+
         console.log(`[createFolders tool] Created folder: ${normalizedPath} (${result.id})`)
-        
       } catch (error) {
         console.error(`[createFolders tool] Error creating ${path}:`, error)
         results.push({
           path: path.startsWith('/') ? path : '/' + path,
           success: false,
           error: error instanceof Error ? error.message : String(error),
-          created: false
+          created: false,
         })
         failures++
       }
     }
-    
+
     // Build summary
     const overallSuccess = failures === 0
     const message = overallSuccess
       ? `Successfully processed all ${validated.paths.length} paths (${foldersCreated} created, ${foldersExisted} already existed)`
       : `Completed with ${failures} failures out of ${validated.paths.length} paths`
-    
+
     const result: CreateFoldersResult = {
       success: overallSuccess,
       message,
@@ -169,13 +171,13 @@ export function createCreateFoldersTool(driveService: DriveService) {
         totalPaths: validated.paths.length,
         foldersCreated,
         foldersExisted,
-        failures
+        failures,
       },
-      results
+      results,
     }
-    
+
     console.log('[createFolders tool] Completed:', result.summary)
-    
+
     // Format response according to MCP spec
     return createMCPTextResponse(result)
   }
@@ -183,9 +185,9 @@ export function createCreateFoldersTool(driveService: DriveService) {
   // Return the tool definition
   return {
     name: 'create_folders',
-    description: 
+    description:
       'Creates multiple folders in Google Drive from a list of paths. ' +
-      'Automatically creates parent directories if they don\'t exist. ' +
+      "Automatically creates parent directories if they don't exist. " +
       'Handles existing folders gracefully based on the skipExisting parameter. ' +
       '\n\nUse cases:\n' +
       '- Set up project folder structures\n' +
@@ -196,6 +198,6 @@ export function createCreateFoldersTool(driveService: DriveService) {
       '2. Create archive folders: ["/Archive/2023/Documents", "/Archive/2023/Photos"]\n' +
       '3. Create single folder with parents: ["/Documents/Work/Reports/2024/January"]',
     schema: createFoldersSchema.shape,
-    handler: createFolders
+    handler: createFolders,
   }
 }

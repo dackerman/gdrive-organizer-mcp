@@ -28,11 +28,11 @@ beforeAll(async () => {
   const __filename = fileURLToPath(import.meta.url)
   const __dirname = dirname(__filename)
   const credentialsPath = join(__dirname, '../../test-credentials.json')
-  
+
   try {
     const credentialsContent = readFileSync(credentialsPath, 'utf8')
     testCredentials = JSON.parse(credentialsContent) as TestCredentials
-    
+
     console.log('✅ Test credentials loaded for:', testCredentials.user_email)
   } catch (error) {
     console.error('❌ Failed to load test credentials from:', credentialsPath)

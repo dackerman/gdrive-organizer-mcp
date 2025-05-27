@@ -34,11 +34,10 @@ describe('createFolders tool', () => {
       .mockResolvedValueOnce('root') // / exists
       .mockResolvedValueOnce('created-folder-id') // After creation
 
-    vi.mocked(mockDriveService.createFolder)
-      .mockResolvedValueOnce({ id: 'created-folder-id' })
+    vi.mocked(mockDriveService.createFolder).mockResolvedValueOnce({ id: 'created-folder-id' })
 
     const result = await tool.handler({
-      paths: ['/Documents']
+      paths: ['/Documents'],
     })
 
     // Verify service calls
@@ -53,16 +52,16 @@ describe('createFolders tool', () => {
         totalPaths: 1,
         foldersCreated: 1,
         foldersExisted: 0,
-        failures: 0
+        failures: 0,
       },
       results: [
         {
           path: '/Documents',
           success: true,
           id: 'created-folder-id',
-          created: true
-        }
-      ]
+          created: true,
+        },
+      ],
     })
   })
 
@@ -82,11 +81,11 @@ describe('createFolders tool', () => {
       .mockResolvedValueOnce({ id: 'folder3-id' })
 
     const result = await tool.handler({
-      paths: ['/Folder1', '/Folder2', '/Folder3']
+      paths: ['/Folder1', '/Folder2', '/Folder3'],
     })
 
     expect(mockDriveService.createFolder).toHaveBeenCalledTimes(3)
-    
+
     const parsed = JSON.parse(result.content[0].text)
     expect(parsed.success).toBe(true)
     expect(parsed.summary.foldersCreated).toBe(3)
@@ -101,7 +100,7 @@ describe('createFolders tool', () => {
     // 2. Call ensureParentPath which checks /Documents (no), creates it
     // 3. Then checks /Documents/Projects (no), creates it
     // 4. Finally creates /Documents/Projects/2024
-    
+
     const resolvePathCalls = [
       // Initial check for full path
       { path: '/Documents/Projects/2024', result: new Error('Not found') },
@@ -111,18 +110,17 @@ describe('createFolders tool', () => {
       { path: '/Documents/Projects', result: new Error('Not found') },
       { path: '/Documents', result: 'documents-id' },
       // Final parent resolution
-      { path: '/Documents/Projects', result: 'projects-id' }
+      { path: '/Documents/Projects', result: 'projects-id' },
     ]
-    
+
     let callIndex = 0
-    vi.mocked(mockDriveService.resolvePathToId)
-      .mockImplementation(async (path) => {
-        const call = resolvePathCalls[callIndex++]
-        if (call.result instanceof Error) {
-          throw call.result
-        }
-        return call.result
-      })
+    vi.mocked(mockDriveService.resolvePathToId).mockImplementation(async (path) => {
+      const call = resolvePathCalls[callIndex++]
+      if (call.result instanceof Error) {
+        throw call.result
+      }
+      return call.result
+    })
 
     vi.mocked(mockDriveService.createFolder)
       .mockResolvedValueOnce({ id: 'documents-id' }) // Create Documents
@@ -130,7 +128,7 @@ describe('createFolders tool', () => {
       .mockResolvedValueOnce({ id: '2024-id' }) // Create 2024
 
     const result = await tool.handler({
-      paths: ['/Documents/Projects/2024']
+      paths: ['/Documents/Projects/2024'],
     })
 
     // Should have created all three folders
@@ -146,11 +144,10 @@ describe('createFolders tool', () => {
 
   it('should skip existing folders by default', async () => {
     // Mock - folder already exists
-    vi.mocked(mockDriveService.resolvePathToId)
-      .mockResolvedValueOnce('existing-folder-id')
+    vi.mocked(mockDriveService.resolvePathToId).mockResolvedValueOnce('existing-folder-id')
 
     const result = await tool.handler({
-      paths: ['/ExistingFolder']
+      paths: ['/ExistingFolder'],
     })
 
     // Should not try to create
@@ -164,18 +161,17 @@ describe('createFolders tool', () => {
       path: '/ExistingFolder',
       success: true,
       id: 'existing-folder-id',
-      created: false
+      created: false,
     })
   })
 
   it('should report error for existing folders when skipExisting is false', async () => {
     // Mock - folder already exists
-    vi.mocked(mockDriveService.resolvePathToId)
-      .mockResolvedValueOnce('existing-folder-id')
+    vi.mocked(mockDriveService.resolvePathToId).mockResolvedValueOnce('existing-folder-id')
 
     const result = await tool.handler({
       paths: ['/ExistingFolder'],
-      skipExisting: false
+      skipExisting: false,
     })
 
     // Should not try to create
@@ -188,7 +184,7 @@ describe('createFolders tool', () => {
       path: '/ExistingFolder',
       success: false,
       error: 'Folder already exists',
-      created: false
+      created: false,
     })
   })
 
@@ -206,7 +202,7 @@ describe('createFolders tool', () => {
       .mockRejectedValueOnce(new Error('Permission denied'))
 
     const result = await tool.handler({
-      paths: ['/Success', '/WillFail', '/AlreadyExists']
+      paths: ['/Success', '/WillFail', '/AlreadyExists'],
     })
 
     const parsed = JSON.parse(result.content[0].text)
@@ -215,42 +211,36 @@ describe('createFolders tool', () => {
       totalPaths: 3,
       foldersCreated: 1,
       foldersExisted: 1,
-      failures: 1
+      failures: 1,
     })
     expect(parsed.results[1].error).toBe('Permission denied')
   })
 
   it('should handle empty paths array', async () => {
-    await expect(
-      tool.handler({ paths: [] })
-    ).rejects.toThrow()
+    await expect(tool.handler({ paths: [] })).rejects.toThrow()
   })
 
   it('should normalize paths without leading slash', async () => {
-    vi.mocked(mockDriveService.resolvePathToId)
-      .mockRejectedValueOnce(new Error('Not found'))
-      .mockResolvedValueOnce('root')
+    vi.mocked(mockDriveService.resolvePathToId).mockRejectedValueOnce(new Error('Not found')).mockResolvedValueOnce('root')
 
-    vi.mocked(mockDriveService.createFolder)
-      .mockResolvedValueOnce({ id: 'folder-id' })
+    vi.mocked(mockDriveService.createFolder).mockResolvedValueOnce({ id: 'folder-id' })
 
     const result = await tool.handler({
-      paths: ['NoSlash'] // Missing leading slash
+      paths: ['NoSlash'], // Missing leading slash
     })
 
     // Should normalize to /NoSlash
     expect(mockDriveService.resolvePathToId).toHaveBeenCalledWith('/NoSlash')
-    
+
     const parsed = JSON.parse(result.content[0].text)
     expect(parsed.results[0].path).toBe('/NoSlash')
   })
 
   it('should handle service errors gracefully', async () => {
-    vi.mocked(mockDriveService.resolvePathToId)
-      .mockRejectedValue(new Error('Service unavailable'))
+    vi.mocked(mockDriveService.resolvePathToId).mockRejectedValue(new Error('Service unavailable'))
 
     const result = await tool.handler({
-      paths: ['/TestFolder']
+      paths: ['/TestFolder'],
     })
 
     const parsed = JSON.parse(result.content[0].text)

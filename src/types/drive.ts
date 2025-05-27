@@ -42,12 +42,7 @@ export interface DriveService {
     pageToken?: string
   }): Promise<ListDirectoryResult>
 
-  readFile(params: {
-    fileId: string
-    maxSize?: number
-    startOffset?: number
-    endOffset?: number
-  }): Promise<ReadFileResult>
+  readFile(params: { fileId: string; maxSize?: number; startOffset?: number; endOffset?: number }): Promise<ReadFileResult>
 
   searchFiles(params: {
     query: string
@@ -67,7 +62,7 @@ export interface DriveService {
   // Path resolution
   resolvePathToId(path: string): Promise<string>
   resolveIdToPath(fileId: string): Promise<string>
-  
+
   // Tree building
   buildDirectoryTree(rootPath?: string, maxDepth?: number): Promise<string[]>
   buildFileTree(rootPath?: string, maxDepth?: number): Promise<string[]>

@@ -5,14 +5,14 @@ import { TestCleanupManager, createTestFolderName } from '../../test/test-cleanu
 
 /**
  * Integration tests for Google Drive FILE operations (as opposed to folder operations)
- * 
+ *
  * NOTE: The current GoogleDriveService implementation has methods for:
  * - moveFile()
  * - renameFile()
- * 
+ *
  * But we don't have a way to CREATE files for testing these methods!
  * The Google Drive API requires uploading file content, which our service doesn't support yet.
- * 
+ *
  * These tests document what we WOULD test if we had file creation capability.
  */
 describe('GoogleDriveService File Operations', () => {
@@ -27,10 +27,10 @@ describe('GoogleDriveService File Operations', () => {
       '', // We'll get a fresh access token via refresh
       credentials.refresh_token,
       credentials.client_id,
-      credentials.client_secret
+      credentials.client_secret,
     )
     cleanup = new TestCleanupManager(service)
-    
+
     // Create test root folder
     const result = await service.createFolder(testRootFolderName, 'root')
     testRootFolderId = result.id
@@ -45,70 +45,70 @@ describe('GoogleDriveService File Operations', () => {
     it('should document that file operations cannot be fully tested without file creation', () => {
       // This test documents the limitation that we cannot fully test file operations
       // because the GoogleDriveService doesn't support creating/uploading files yet.
-      
+
       const fileOperationsToTest = [
         'moveFile - Move a file between folders',
         'renameFile - Rename a file',
         'Move Google Docs/Sheets/Slides files',
-        'Preserve file metadata when moving'
+        'Preserve file metadata when moving',
       ]
-      
+
       // This test passes - it's documentation of what we would test if we could create files
       expect(fileOperationsToTest).toHaveLength(4)
-      
+
       // Log the limitations for visibility
       console.log('\n⚠️  File operations that need testing once file creation is implemented:')
-      fileOperationsToTest.forEach(op => console.log(`   - ${op}`))
+      fileOperationsToTest.forEach((op) => console.log(`   - ${op}`))
     })
-    
+
     it('should test file operations with manually created test files if available', async () => {
       // This test will work if you manually create test files in your Google Drive
       // It demonstrates how file operations would be tested
-      
+
       const rootContents = await service.listDirectory({
         folderId: testRootFolderId,
-        pageSize: 10
+        pageSize: 10,
       })
-      
-      const testFile = rootContents.files.find(f => !f.isFolder && f.name.includes('test'))
-      
+
+      const testFile = rootContents.files.find((f) => !f.isFolder && f.name.includes('test'))
+
       if (testFile) {
         console.log(`\n🧪 Found test file: ${testFile.name} (${testFile.id})`)
-        
+
         // Create a destination folder for testing move operations
         const destFolder = await service.createFolder('file-move-test-dest', testRootFolderId)
         cleanup.track({ id: destFolder.id, name: 'file-move-test-dest', type: 'folder' })
-        
+
         // Test rename
         const originalName = testFile.name
         const newName = `renamed-${Date.now()}-${originalName}`
         await service.renameFile(testFile.id, newName)
-        
+
         // Verify rename
         const afterRename = await service.listDirectory({ folderId: testRootFolderId })
-        const renamedFile = afterRename.files.find(f => f.id === testFile.id)
+        const renamedFile = afterRename.files.find((f) => f.id === testFile.id)
         expect(renamedFile?.name).toBe(newName)
-        
+
         // Test move
         await service.moveFile(testFile.id, destFolder.id)
-        
+
         // Verify move
         const destContents = await service.listDirectory({ folderId: destFolder.id })
-        const movedFile = destContents.files.find(f => f.id === testFile.id)
+        const movedFile = destContents.files.find((f) => f.id === testFile.id)
         expect(movedFile).toBeDefined()
         expect(movedFile?.name).toBe(newName)
-        
+
         // Move back and rename to original
         await service.moveFile(testFile.id, testRootFolderId)
         await service.renameFile(testFile.id, originalName)
-        
+
         console.log('✅ File operations test completed successfully')
       } else {
         console.log('\n💡 No test files found. To test file operations:')
         console.log('   1. Manually upload a file to your Google Drive')
         console.log('   2. Move it to the test folder')
         console.log('   3. Re-run this test')
-        
+
         // This is not a failure - just no files to test with
         expect(testFile).toBeUndefined()
       }
@@ -121,7 +121,7 @@ describe('GoogleDriveService File Operations', () => {
       // you can test listing them here
       const result = await service.listDirectory({
         folderId: testRootFolderId,
-        pageSize: 100
+        pageSize: 100,
       })
 
       console.log(`Found ${result.files.length} items in test folder:`)
@@ -134,10 +134,10 @@ describe('GoogleDriveService File Operations', () => {
       // List all files in root to find examples
       const result = await service.listDirectory({
         folderId: 'root',
-        pageSize: 20
+        pageSize: 20,
       })
 
-      const fileTypes = new Set(result.files.map(f => f.mimeType))
+      const fileTypes = new Set(result.files.map((f) => f.mimeType))
       console.log('File types found:', Array.from(fileTypes))
 
       // Group by type
@@ -170,7 +170,7 @@ describe('GoogleDriveService File Operations', () => {
         'copyFile(fileId, newParentId) - Copy a file',
         'getFileMetadata(fileId) - Get detailed file info',
         'shareFile(fileId, email, role) - Share a file',
-        'exportFile(fileId, mimeType) - Export Google Docs to other formats'
+        'exportFile(fileId, mimeType) - Export Google Docs to other formats',
       ]
 
       console.log('\n📋 Missing GoogleDriveService methods for complete testing:')

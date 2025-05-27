@@ -5,6 +5,7 @@ This guide explains how to obtain a Google OAuth2 access token for running integ
 ## Quick Start
 
 For detailed step-by-step instructions with screenshots and troubleshooting, see:
+
 - **[GET_OAUTH_TOKEN.md](GET_OAUTH_TOKEN.md)** - Comprehensive guide
 - **Run `node scripts/get-test-credentials.js`** - Interactive helper script
 
@@ -22,6 +23,7 @@ Visit: https://developers.google.com/oauthplayground/
 ### 2. Select Google Drive Scopes
 
 In Step 1, find and select these scopes:
+
 - `https://www.googleapis.com/auth/drive` (Full Drive access)
 - `https://www.googleapis.com/auth/drive.file` (File-level access)
 - `https://www.googleapis.com/auth/userinfo.email` (Email access)
@@ -66,6 +68,7 @@ Make sure `test-credentials.json` is in your `.gitignore` file.
 ## Note on Token Expiry
 
 Access tokens from OAuth Playground expire after 1 hour. For longer-lived testing:
+
 1. Use a service account instead (requires more setup)
 2. Manually refresh the token when needed
 3. Use the refresh token (if available) to get new access tokens
@@ -73,6 +76,7 @@ Access tokens from OAuth Playground expire after 1 hour. For longer-lived testin
 ## Alternative: Using a Service Account
 
 For CI/CD environments, consider using a service account:
+
 1. Create a service account in Google Cloud Console
 2. Enable Google Drive API
 3. Download the service account key JSON

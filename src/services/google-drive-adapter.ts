@@ -12,14 +12,9 @@ export class GoogleDriveAdapter implements DriveService {
   private pathToIdCache = new Map<string, string>()
   private idToPathCache = new Map<string, string>()
 
-  constructor(
-    accessToken: string,
-    refreshToken?: string,
-    clientId?: string,
-    clientSecret?: string
-  ) {
+  constructor(accessToken: string, refreshToken?: string, clientId?: string, clientSecret?: string) {
     this.apiClient = new GoogleDriveApiClient(accessToken, refreshToken, clientId, clientSecret)
-    
+
     // Initialize root path
     this.pathToIdCache.set('/', 'root')
     this.idToPathCache.set('root', '/')
@@ -28,10 +23,7 @@ export class GoogleDriveAdapter implements DriveService {
   /**
    * Converts a Google Drive API file to our internal DriveFile format
    */
-  private async convertToDriveFile(
-    file: GoogleDriveFile,
-    path?: string
-  ): Promise<DriveFile> {
+  private async convertToDriveFile(file: GoogleDriveFile, path?: string): Promise<DriveFile> {
     // If path not provided, try to resolve it
     if (!path) {
       path = await this.getFilePath(file.id, file.name, file.parents?.[0])
@@ -39,9 +31,7 @@ export class GoogleDriveAdapter implements DriveService {
 
     const isFolder = file.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER
     const isShared = file.shared || false
-    const isPublic = file.permissions?.some(p => 
-      p.type === 'anyone' || (p.type === 'domain' && p.role !== 'owner')
-    ) || false
+    const isPublic = file.permissions?.some((p) => p.type === 'anyone' || (p.type === 'domain' && p.role !== 'owner')) || false
 
     return {
       id: file.id,
@@ -54,19 +44,15 @@ export class GoogleDriveAdapter implements DriveService {
       path,
       isFolder,
       isShared,
-      sharingStatus: isPublic ? 'public' : (isShared ? 'shared' : 'private'),
-      folderDepth: path.split('/').filter(p => p).length - 1,
+      sharingStatus: isPublic ? 'public' : isShared ? 'shared' : 'private',
+      folderDepth: path.split('/').filter((p) => p).length - 1,
     }
   }
 
   /**
    * Helper to build path from file ID
    */
-  private async getFilePath(
-    fileId: string,
-    fileName: string,
-    parentId?: string
-  ): Promise<string> {
+  private async getFilePath(fileId: string, fileName: string, parentId?: string): Promise<string> {
     // Check cache first
     if (this.idToPathCache.has(fileId)) {
       return this.idToPathCache.get(fileId)!
@@ -95,12 +81,8 @@ export class GoogleDriveAdapter implements DriveService {
         fields: 'id,name,parents',
       })
 
-      const parentPath = await this.getFilePath(
-        parent.id,
-        parent.name,
-        parent.parents?.[0]
-      )
-      
+      const parentPath = await this.getFilePath(parent.id, parent.name, parent.parents?.[0])
+
       const path = `${parentPath}/${fileName}`
       this.idToPathCache.set(fileId, path)
       this.pathToIdCache.set(path, fileId)
@@ -114,57 +96,53 @@ export class GoogleDriveAdapter implements DriveService {
   async resolvePathToId(path: string): Promise<string> {
     // Normalize path
     const normalizedPath = this.normalizePath(path)
-    
+
     // Check cache first
     if (this.pathToIdCache.has(normalizedPath)) {
       return this.pathToIdCache.get(normalizedPath)!
     }
-    
+
     // Root case
     if (normalizedPath === '/') {
       return 'root'
     }
-    
+
     // Split path into components
-    const pathParts = normalizedPath.split('/').filter(part => part.length > 0)
-    
+    const pathParts = normalizedPath.split('/').filter((part) => part.length > 0)
+
     // Walk the path from root
     let currentId = 'root'
     let currentPath = ''
-    
+
     for (const part of pathParts) {
       currentPath += '/' + part
-      
+
       // Check if we have this path cached
       if (this.pathToIdCache.has(currentPath)) {
         currentId = this.pathToIdCache.get(currentPath)!
         continue
       }
-      
+
       // Search for the part in current directory
-      const query = DriveQueryBuilder.create()
-        .inParents(currentId)
-        .nameEquals(part)
-        .notTrashed()
-        .build()
-        
+      const query = DriveQueryBuilder.create().inParents(currentId).nameEquals(part).notTrashed().build()
+
       const response = await this.apiClient.filesList({
         q: query,
         fields: 'files(id,name)',
         pageSize: 1,
       })
-      
+
       if (response.files.length === 0) {
         throw new Error(`Path not found: ${currentPath}`)
       }
-      
+
       currentId = response.files[0].id
-      
+
       // Cache the resolved path
       this.pathToIdCache.set(currentPath, currentId)
       this.idToPathCache.set(currentId, currentPath)
     }
-    
+
     return currentId
   }
 
@@ -173,18 +151,18 @@ export class GoogleDriveAdapter implements DriveService {
     if (this.idToPathCache.has(fileId)) {
       return this.idToPathCache.get(fileId)!
     }
-    
+
     // Root case
     if (fileId === 'root') {
       return '/'
     }
-    
+
     // Get file metadata to build path
     const file = await this.apiClient.filesGet({
       fileId,
       fields: 'id,name,parents',
     })
-    
+
     const path = await this.getFilePath(file.id, file.name, file.parents?.[0])
     return path
   }
@@ -198,15 +176,7 @@ export class GoogleDriveAdapter implements DriveService {
     pageSize?: number
     pageToken?: string
   }): Promise<ListDirectoryResult> {
-    const {
-      folderPath,
-      folderId,
-      query: userQuery,
-      includeShared = true,
-      onlyDirectories = false,
-      pageSize = 20,
-      pageToken,
-    } = params
+    const { folderPath, folderId, query: userQuery, includeShared = true, onlyDirectories = false, pageSize = 20, pageToken } = params
 
     // Resolve folder ID from path if provided
     let targetFolderId = folderId || 'root'
@@ -216,7 +186,7 @@ export class GoogleDriveAdapter implements DriveService {
 
     // Build query
     let query = ''
-    
+
     // If user provided a custom query, use it as the base
     if (userQuery) {
       query = userQuery
@@ -226,12 +196,11 @@ export class GoogleDriveAdapter implements DriveService {
       }
     } else {
       // Build default query using query builder
-      const queryBuilder = DriveQueryBuilder.create()
-        .inParents(targetFolderId)
-      
+      const queryBuilder = DriveQueryBuilder.create().inParents(targetFolderId)
+
       // Always exclude trashed files unless explicitly included in user query
       queryBuilder.notTrashed()
-      
+
       // Apply additional filters
       if (!includeShared) {
         queryBuilder.custom('sharedWithMe = false')
@@ -239,10 +208,10 @@ export class GoogleDriveAdapter implements DriveService {
       if (onlyDirectories) {
         queryBuilder.mimeTypeEquals(GOOGLE_DRIVE_MIME_TYPES.FOLDER)
       }
-      
+
       query = queryBuilder.build()
     }
-    
+
     // For user queries, add constraints if not already present
     if (userQuery) {
       if (!query.includes('trashed')) {
@@ -266,9 +235,7 @@ export class GoogleDriveAdapter implements DriveService {
     })
 
     // Convert files to our format
-    const files: DriveFile[] = await Promise.all(
-      response.files.map(file => this.convertToDriveFile(file))
-    )
+    const files: DriveFile[] = await Promise.all(response.files.map((file) => this.convertToDriveFile(file)))
 
     return {
       files,
@@ -276,12 +243,7 @@ export class GoogleDriveAdapter implements DriveService {
     }
   }
 
-  async readFile(params: {
-    fileId: string
-    maxSize?: number
-    startOffset?: number
-    endOffset?: number
-  }): Promise<ReadFileResult> {
+  async readFile(params: { fileId: string; maxSize?: number; startOffset?: number; endOffset?: number }): Promise<ReadFileResult> {
     const {
       fileId,
       maxSize = 1048576, // 1MB default
@@ -305,7 +267,7 @@ export class GoogleDriveAdapter implements DriveService {
 
     // For binary files, download content
     const response = await this.apiClient.filesDownload(fileId)
-    
+
     // Handle range requests if needed
     let content: string
     let encoding: string
@@ -316,13 +278,13 @@ export class GoogleDriveAdapter implements DriveService {
       const blob = await response.blob()
       const arrayBuffer = await blob.arrayBuffer()
       const bytes = new Uint8Array(arrayBuffer)
-      
+
       const end = endOffset ?? Math.min(startOffset + maxSize, bytes.length)
       const slice = bytes.slice(startOffset, end)
-      
+
       // Determine if content is text or binary
       const isText = this.isTextMimeType(file.mimeType)
-      
+
       if (isText) {
         content = new TextDecoder().decode(slice)
         encoding = 'utf-8'
@@ -330,18 +292,18 @@ export class GoogleDriveAdapter implements DriveService {
         content = btoa(String.fromCharCode(...slice))
         encoding = 'base64'
       }
-      
+
       actualSize = slice.length
     } else {
       // Read normally
       const contentType = response.headers.get('content-type') || file.mimeType
       const isText = this.isTextMimeType(contentType)
-      
+
       if (isText) {
         content = await response.text()
         encoding = 'utf-8'
         actualSize = content.length
-        
+
         // Truncate if needed
         if (content.length > maxSize) {
           content = content.substring(0, maxSize)
@@ -350,12 +312,10 @@ export class GoogleDriveAdapter implements DriveService {
         const blob = await response.blob()
         const arrayBuffer = await blob.arrayBuffer()
         const bytes = new Uint8Array(arrayBuffer)
-        
+
         // Truncate if needed
-        const truncatedBytes = bytes.length > maxSize 
-          ? bytes.slice(0, maxSize)
-          : bytes
-          
+        const truncatedBytes = bytes.length > maxSize ? bytes.slice(0, maxSize) : bytes
+
         content = btoa(String.fromCharCode(...truncatedBytes))
         encoding = 'base64'
         actualSize = truncatedBytes.length
@@ -371,10 +331,7 @@ export class GoogleDriveAdapter implements DriveService {
     }
   }
 
-  private async readGoogleDoc(
-    file: GoogleDriveFile,
-    maxSize: number
-  ): Promise<ReadFileResult> {
+  private async readGoogleDoc(file: GoogleDriveFile, maxSize: number): Promise<ReadFileResult> {
     // Map Google Docs types to export formats
     const exportMimeTypes: Record<string, string> = {
       [GOOGLE_DRIVE_MIME_TYPES.DOCUMENT]: GOOGLE_DRIVE_MIME_TYPES.EXPORT_TXT,
@@ -419,36 +376,30 @@ export class GoogleDriveAdapter implements DriveService {
     namePattern?: string
     maxResults?: number
   }): Promise<SearchFilesResult> {
-    const {
-      query,
-      folderId,
-      mimeType,
-      namePattern,
-      maxResults = 50,
-    } = params
+    const { query, folderId, mimeType, namePattern, maxResults = 50 } = params
 
     // Build search query
     const queryBuilder = DriveQueryBuilder.create()
-    
+
     // Add text search
     if (query) {
       // Create a custom condition for combined name/fullText search
-      queryBuilder.custom(`(name contains '${query.replace(/'/g, "\\'") }' or fullText contains '${query.replace(/'/g, "\\'")}')`)  
+      queryBuilder.custom(`(name contains '${query.replace(/'/g, "\\'")}' or fullText contains '${query.replace(/'/g, "\\'")}')`)
     }
-    
+
     // Add folder filter
     if (folderId) {
       queryBuilder.inParents(folderId)
     }
-    
+
     // Add mime type filter
     if (mimeType) {
       queryBuilder.mimeTypeEquals(mimeType)
     }
-    
+
     // Always exclude trashed files
     queryBuilder.notTrashed()
-    
+
     const driveQuery = queryBuilder.build()
 
     // Make API request
@@ -464,16 +415,14 @@ export class GoogleDriveAdapter implements DriveService {
     if (namePattern) {
       try {
         const regex = new RegExp(namePattern, 'i')
-        files = files.filter(file => regex.test(file.name))
+        files = files.filter((file) => regex.test(file.name))
       } catch (e) {
         // Invalid regex, skip filtering
       }
     }
 
     // Convert to our format
-    const driveFiles: DriveFile[] = await Promise.all(
-      files.map(file => this.convertToDriveFile(file))
-    )
+    const driveFiles: DriveFile[] = await Promise.all(files.map((file) => this.convertToDriveFile(file)))
 
     return { files: driveFiles }
   }
@@ -545,18 +494,16 @@ export class GoogleDriveAdapter implements DriveService {
   async buildDirectoryTree(rootPath: string = '/', maxDepth: number = 10): Promise<string[]> {
     const directories: string[] = []
     const rootId = await this.resolvePathToId(rootPath)
-    
-    const queue: Array<{ id: string; path: string; depth: number }> = [
-      { id: rootId, path: rootPath, depth: 0 }
-    ]
-    
+
+    const queue: Array<{ id: string; path: string; depth: number }> = [{ id: rootId, path: rootPath, depth: 0 }]
+
     while (queue.length > 0) {
       const batch = queue.splice(0, 5)
-      
+
       await Promise.all(
         batch.map(async ({ id, path, depth }) => {
           directories.push(path)
-          
+
           if (depth < maxDepth) {
             try {
               const response = await this.apiClient.filesList({
@@ -564,54 +511,52 @@ export class GoogleDriveAdapter implements DriveService {
                 pageSize: 100,
                 fields: 'files(id,name)',
               })
-              
+
               for (const item of response.files) {
                 const childPath = path === '/' ? '/' + item.name : path + '/' + item.name
-                
+
                 this.pathToIdCache.set(childPath, item.id)
                 this.idToPathCache.set(item.id, childPath)
-                
+
                 queue.push({ id: item.id, path: childPath, depth: depth + 1 })
               }
             } catch (error) {
               // Continue with other folders even if one fails
             }
           }
-        })
+        }),
       )
     }
-    
+
     return directories.sort()
   }
 
   async buildFileTree(rootPath: string = '/', maxDepth: number = 10): Promise<string[]> {
     const files: string[] = []
     const rootId = await this.resolvePathToId(rootPath)
-    
-    const queue: Array<{ id: string; path: string; depth: number }> = [
-      { id: rootId, path: rootPath, depth: 0 }
-    ]
-    
+
+    const queue: Array<{ id: string; path: string; depth: number }> = [{ id: rootId, path: rootPath, depth: 0 }]
+
     while (queue.length > 0) {
       const batch = queue.splice(0, 5)
-      
+
       await Promise.all(
         batch.map(async ({ id, path, depth }) => {
           if (depth >= maxDepth) return
-          
+
           try {
             const response = await this.apiClient.filesList({
               q: `'${id}' in parents and trashed = false`,
               pageSize: 100,
               fields: 'files(id,name,mimeType)',
             })
-            
+
             for (const item of response.files) {
               const itemPath = DrivePathUtils.joinPath(path, item.name)
-              
+
               this.pathToIdCache.set(itemPath, item.id)
               this.idToPathCache.set(item.id, itemPath)
-              
+
               if (item.mimeType === GOOGLE_DRIVE_MIME_TYPES.FOLDER) {
                 queue.push({ id: item.id, path: itemPath, depth: depth + 1 })
               } else {
@@ -621,10 +566,10 @@ export class GoogleDriveAdapter implements DriveService {
           } catch (error) {
             // Continue with other folders even if one fails
           }
-        })
+        }),
       )
     }
-    
+
     return files.sort()
   }
 
